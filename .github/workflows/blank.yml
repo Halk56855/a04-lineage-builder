@@ -38,9 +38,9 @@ jobs:
     - name: Clone Samsung A04 Device Tree (سحب شجرة الجهاز والـ Vendor)
       run: |
        cd android
-        git clone https://github.com/juanes10201/android_device_samsung_a04.git -b lineage-20 device/samsung/a04
-        git clone https://github.com/juanes10201/android_vendor_samsung_a04.git -b lineage-20 vendor/samsung/a04
-        git clone https://github.com/juanes10201/kernel-samsung-a04.git -b lineage-20 kernel/samsung/a04
+        git clone https://github.com/juanes10201/android_device_samsung_a04.git -b main device/samsung/a04
+        git clone https://github.com/juanes10201/android_vendor_samsung_a04.git -b main vendor/samsung/a04
+        git clone https://github.com/juanes10201/kernel-samsung-a04.git -b main kernel/samsung/a04
 
     
     - name: Build LineageOS ROM (بدء التجميع البرمجي)
