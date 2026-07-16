@@ -1,4 +1,4 @@
-name: LineageOS 24 Cloud Builder for Samsung A04
+name: LineageOS 23 Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,14 +27,14 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize LineageOS 24 Source (تهيئة كود أندرويد 17 السريع)
+    - name: Initialize LineageOS 23 Source (تهيئة كود أندرويد 16 السريع)
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@lineage.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تهيئة بأقل مساحة ممكنة وتخصيص المجموعات المطلوبة فقط للينكس لضمان عدم امتلاء القرص
-        repo init -u https://github.com/LineageOS/android.git -b lineage-24.0 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تهيئة كود LineageOS 23 بأقل عمق لتوفير مساحة السيرفر
+        repo init -u https://github.com/LineageOS/android.git -b lineage-23.0 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب شجرة الجهاز والـ Vendor والكيرنل المحدثة)
       run: |
@@ -46,12 +46,11 @@ jobs:
         # 3. مستودع الكيرنل الأحدث (فرع latest-B)
         git clone https://github.com/rsuntk-oss/android_kernel_samsung_a04m.git -b latest-B kernel/samsung/a04
 
-    - name: Sync Source Code (بدء المزامنة السحابية فائقة السرعة والمقاومة للانقطاع)
+    - name: Sync Source Code (بدء المزامنة السحابية لنسخة 23)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        # المزامنة مع محاولة الإصلاح التلقائي في حال انقطاع السيرفر
-        repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --optimized-fetch || repo sync -c -j2 --force-sync --no-clone-bundle --no-tags
+        repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
 
     - name: Build LineageOS ROM (بدء التجميع البرمجي)
       run: |
@@ -64,5 +63,5 @@ jobs:
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: LineageOS-24-Samsung-A04
+        name: LineageOS-23-Samsung-A04
         path: android/out/target/product/a04/*.zip
