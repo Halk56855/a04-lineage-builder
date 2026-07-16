@@ -35,9 +35,9 @@ jobs:
         mkdir android && cd android
         repo init -u https://github.com/LineageOS/android.git -b lineage-24.0 --git-lfs --depth=1
 
-     - name: Clone Samsung A04 Device Tree (سحب شجرة الجهاز والـ Vendor)
+    - name: Clone Samsung A04 Device Tree (سحب شجرة الجهاز والـ Vendor)
       run: |
-        cd android
+       cd android
         git clone https://github.com/juanes10201/android_device_samsung_a04.git -b lineage-20 device/samsung/a04
         git clone https://github.com/juanes10201/android_vendor_samsung_a04.git -b lineage-20 vendor/samsung/a04
         git clone https://github.com/juanes10201/kernel-samsung-a04.git -b lineage-20 kernel/samsung/a04
