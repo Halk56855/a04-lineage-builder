@@ -45,29 +45,29 @@ jobs:
         # 3. مستودع الكيرنل المشترك لـ DaniTheSillyFem (فرع linux-4.19.y)
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code (بدء المزامنة السحابية الحقيقية والعميقة)
+    - name: Sync Source Code (بدء المزامنة السحابية للروم)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        # مزامنة صارمة ومستمرة حتى جلب آخر ملف
         repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
-    - name: Verify Workspace (التحقق الفعلي من وجود الملفات قبل البدء)
+    - name: Verify Workspace (التحقق الفعلي من المسار الجديد المكتشف)
       run: |
         cd android
-        echo "=== التحقق من وجود مجلد البناء وملف الإعداد ==="
-        ls -la
-        if [ -f "build/envsetup.sh" ]; then
-          echo "✅ ممتاز! الملف موجود وجاهز للتجميع."
+        echo "=== التحقق من وجود مجلد البناء داخل مجلد lineage ==="
+        ls -la lineage/
+        if [ -f "lineage/build/envsetup.sh" ]; then
+          echo "✅ وجدناه! الملف موجود داخل مجلد lineage الفرعي وجاهز تماماً للبناء."
         else
-          echo "❌ خطأ فادح: الملفات لم يتم تحميلها بالكامل أثناء المزامنة!"
+          echo "❌ خطأ غير متوقع: الملف غير موجود حتى داخل مجلد lineage!"
           exit 1
         fi
 
-    - name: Build Evolution X ROM (بدء التجميع البرمجي من المجلد الصحيح)
+    - name: Build Evolution X ROM (بدء التجميع من المسار الصحيح)
       run: |
         export PATH="$HOME/bin:$PATH"
-        cd android
+        # الدخول للمجلد الرئيسي ثم مجلد lineage الفرعي لتشغيل بيئة التجميع
+        cd android/lineage
         source build/envsetup.sh
         lunch evo_a04-userdebug
         mka bacon -j$(nproc --all)
