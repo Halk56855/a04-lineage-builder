@@ -1,4 +1,4 @@
-name: Evolution X Cloud Builder for Samsung A04
+name: LineageOS 24 Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,19 +27,20 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Evolution X Source (تهيئة كود ايفولوشن إكس لأندرويد 14 المستقر)
+    - name: Initialize LineageOS 24 Source (تهيئة كود أندرويد 17 السريع)
       run: |
         export PATH="$HOME/bin:$PATH"
-        git config --global user.email "cloud-build@evolution.org"
+        git config --global user.email "cloud-build@lineage.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # استخدام فرع udc المستقر لضمان اكتمال ملفات التجميع وبيئة البناء
-        repo init -u https://github.com/Evolution-X/manifest.git -b udc --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تهيئة بأقل مساحة ممكنة وتخصيص المجموعات المطلوبة فقط لضمان عدم امتلاء القرص
+        repo init -u https://github.com/LineageOS/android.git -b lineage-24.0 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
-    - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
+    - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة لجهازك)
       run: |
+        # الدخول للمجلد الصحيح قبل السحب
         cd android
-        # 1. شجرة الجهاز لـ DaniHasReal (فرع lineage_22 المتوافق مع أندرويد 14 و 15)
+        # 1. شجرة الجهاز لـ DaniHasReal (فرع lineage_22)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
         # 2. شجرة الـ Vendor المطابقة لـ DaniHasReal (فرع main)
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
@@ -52,16 +53,17 @@ jobs:
         cd android
         repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
 
-    - name: Build Evolution X ROM (بدء التجميع البرمجي)
+    - name: Build LineageOS ROM (بدء التجميع البرمجي من المجلد الصحيح)
       run: |
         export PATH="$HOME/bin:$PATH"
+        # الدخول إلى مجلد العمل الذي يحتوي على الملفات البرمجية التي تمت مزامنتها
         cd android
         source build/envsetup.sh
-        lunch evo_a04-userdebug
+        lunch lineage_a04-userdebug
         mka bacon -j$(nproc --all)
 
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: EvolutionX-Android14-Samsung-A04
+        name: LineageOS-24-Samsung-A04
         path: android/out/target/product/a04/*.zip
