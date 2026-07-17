@@ -33,7 +33,8 @@ jobs:
         git config --global user.email "cloud-build@evolution.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        repo init -u https://github.com/Evolution-X/manifest.git -b cnb --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تهيئة كاملة ومبسطة للمستودع لضمان جلب كافة الفروع والأدوات الرئيسية
+        repo init -u https://github.com/Evolution-X/manifest.git -b cnb --git-lfs --depth=1
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
@@ -49,26 +50,34 @@ jobs:
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+        # مزامنة سحابية كاملة وعميقة لضمان تحميل مجلد build الرئيسي
+        repo sync -c --force-sync --no-clone-bundle --no-tags -j$(nproc --all)
 
-    - name: Verify Workspace (التحقق الفعلي من المسار الجديد المكتشف)
+    - name: Locate and Verify envsetup.sh (البحث الذكي عن ملف الإعداد وتأكيده)
+      id: locate_file
       run: |
         cd android
-        echo "=== التحقق من وجود مجلد البناء داخل مجلد lineage ==="
-        ls -la lineage/
-        if [ -f "lineage/build/envsetup.sh" ]; then
-          echo "✅ وجدناه! الملف موجود داخل مجلد lineage الفرعي وجاهز تماماً للبناء."
+        echo "=== البحث عن ملف envsetup.sh في جميع المجلدات ==="
+        FOUND_PATH=$(find . -name "envsetup.sh" | head -n 1)
+        if [ -n "$FOUND_PATH" ]; then
+          # إزالة النقطة الزائدة من بداية المسار للحصول على مسار نظيف
+          CLEAN_PATH=$(echo "$FOUND_PATH" | sed 's|^\./||')
+          echo "✅ تم العثور على الملف في المسار التالي: $CLEAN_PATH"
+          echo "envsetup_path=$CLEAN_PATH" >> $GITHUB_ENV
         else
-          echo "❌ خطأ غير متوقع: الملف غير موجود حتى داخل مجلد lineage!"
+          echo "❌ خطأ فادح: لم يتم العثور على ملف envsetup.sh في أي مكان!"
+          ls -R
           exit 1
         fi
 
-    - name: Build Evolution X ROM (بدء التجميع من المسار الصحيح)
+    - name: Build Evolution X ROM (بدء التجميع التلقائي بناءً على المسار المكتشف)
       run: |
         export PATH="$HOME/bin:$PATH"
-        # الدخول للمجلد الرئيسي ثم مجلد lineage الفرعي لتشغيل بيئة التجميع
-        cd android/lineage
-        source build/envsetup.sh
+        cd android
+        # استخراج المجلد الأب لملف envsetup.sh والدخول إليه لبدء التجميع
+        TARGET_DIR=$(dirname "${{ env.envsetup_path }}")
+        cd $TARGET_DIR
+        source envsetup.sh
         lunch evo_a04-userdebug
         mka bacon -j$(nproc --all)
 
