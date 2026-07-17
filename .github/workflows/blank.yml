@@ -33,7 +33,6 @@ jobs:
         git config --global user.email "cloud-build@evolution.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # استخدام الفرع الأحدث cnb الموضح في مستنداتك وصورك
         repo init -u https://github.com/Evolution-X/manifest.git -b cnb --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
@@ -46,16 +45,28 @@ jobs:
         # 3. مستودع الكيرنل المشترك لـ DaniTheSillyFem (فرع linux-4.19.y)
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code (بدء المزامنة السحابية للروم)
+    - name: Sync Source Code (بدء المزامنة السحابية الحقيقية والعميقة)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
+        # مزامنة صارمة ومستمرة حتى جلب آخر ملف
+        repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
+
+    - name: Verify Workspace (التحقق الفعلي من وجود الملفات قبل البدء)
+      run: |
+        cd android
+        echo "=== التحقق من وجود مجلد البناء وملف الإعداد ==="
+        ls -la
+        if [ -f "build/envsetup.sh" ]; then
+          echo "✅ ممتاز! الملف موجود وجاهز للتجميع."
+        else
+          echo "❌ خطأ فادح: الملفات لم يتم تحميلها بالكامل أثناء المزامنة!"
+          exit 1
+        fi
 
     - name: Build Evolution X ROM (بدء التجميع البرمجي من المجلد الصحيح)
       run: |
         export PATH="$HOME/bin:$PATH"
-        # الدخول للمسار الصحيح لتفادي مشكلة envsetup نهائياً
         cd android
         source build/envsetup.sh
         lunch evo_a04-userdebug
