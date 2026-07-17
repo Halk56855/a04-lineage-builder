@@ -1,4 +1,4 @@
-name: LineageOS 23 Cloud Builder for Samsung A04
+name: Evolution X Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,41 +27,41 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize LineageOS 23 Source (تهيئة كود أندرويد 16 السريع)
+    - name: Initialize Evolution X Source (تهيئة كود ايفولوشن إكس لأندرويد 15)
       run: |
         export PATH="$HOME/bin:$PATH"
-        git config --global user.email "cloud-build@lineage.org"
+        git config --global user.email "cloud-build@evolution.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تهيئة كود LineageOS 23 بأقل عمق لتوفير مساحة السيرفر
-        repo init -u https://github.com/LineageOS/android.git -b lineage-23.0 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تهيئة فرع vic المخصص لأندرويد 15 ليتطابق مع شجرة جهازك lineage_22
+        repo init -u https://github.com/Evolution-X/manifest.git -b vic --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
-    - name: Clone Samsung A04 Device Tree (سحب شجرة الجهاز والـ Vendor والكيرنل المحدثة)
+    - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
         cd android
-        # 1. شجرة الجهاز (فرع main)
-        git clone https://github.com/juanes10201/android_device_samsung_a04.git -b main device/samsung/a04
-        # 2. الـ Vendor الأصح والجديد (فرع main)
+        # 1. شجرة الجهاز الاحترافية الجديدة لـ DaniHasReal (فرع lineage_22)
+        git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
+        # 2. شجرة الـ Vendor المطابقة لـ DaniHasReal (فرع main)
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
-        # 3. مستودع الكيرنل الأحدث (فرع latest-B)
-        git clone https://github.com/rsuntk-oss/android_kernel_samsung_a04m.git -b latest-B kernel/samsung/a04
+        # 3. مستودع الكيرنل المشترك لـ DaniTheSillyFem (فرع linux-4.19.y)
+        git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code (بدء المزامنة السحابية لنسخة 23)
+    - name: Sync Source Code (بدء المزامنة السحابية للروم)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
         repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
 
-    - name: Build LineageOS ROM (بدء التجميع البرمجي)
+    - name: Build Evolution X ROM (بدء التجميع البرمجي)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
         source build/envsetup.sh
-        lunch lineage_a04-userdebug
+        lunch evo_a04-userdebug
         mka bacon -j$(nproc --all)
 
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: LineageOS-23-Samsung-A04
+        name: EvolutionX-Android15-Samsung-A04
         path: android/out/target/product/a04/*.zip
