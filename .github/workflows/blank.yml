@@ -27,19 +27,19 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Evolution X Source (تهيئة كود ايفولوشن إكس لأندرويد 15)
+    - name: Initialize Evolution X Source (تهيئة كود ايفولوشن إكس لأندرويد 14 المستقر)
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@evolution.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تهيئة فرع vic المخصص لأندرويد 15 ليتطابق مع شجرة جهازك lineage_22
-        repo init -u https://github.com/Evolution-X/manifest.git -b vic --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # استخدام فرع udc المستقر لضمان اكتمال ملفات التجميع وبيئة البناء
+        repo init -u https://github.com/Evolution-X/manifest.git -b udc --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
         cd android
-        # 1. شجرة الجهاز الاحترافية الجديدة لـ DaniHasReal (فرع lineage_22)
+        # 1. شجرة الجهاز لـ DaniHasReal (فرع lineage_22 المتوافق مع أندرويد 14 و 15)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
         # 2. شجرة الـ Vendor المطابقة لـ DaniHasReal (فرع main)
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
@@ -63,5 +63,5 @@ jobs:
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: EvolutionX-Android15-Samsung-A04
+        name: EvolutionX-Android14-Samsung-A04
         path: android/out/target/product/a04/*.zip
