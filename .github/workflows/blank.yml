@@ -27,14 +27,14 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Project Infinity X Source (تهيئة كود الروم لأندرويد 14)
+    - name: Initialize Project Infinity X Source (تهيئة كود الروم المصحح)
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تهيئة كود مصدر Infinity-X الرسمي لأندرويد 14
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 14 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تم تصحيح الفرع إلى fourteen وهو التسمية المعتمدة لأندرويد 14 في هذا الروم
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b fourteen --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
@@ -57,7 +57,6 @@ jobs:
         export PATH="$HOME/bin:$PATH"
         cd android
         source build/envsetup.sh
-        # تهيئة بناء روم Infinity لـ a04
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
 
