@@ -1,4 +1,4 @@
-name: Evolution X Cloud Builder for Samsung A04
+name: Project Infinity X Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,19 +27,19 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Evolution X Source (تهيئة كود ايفولوشن إكس لأندرويد 14 المستقر)
+    - name: Initialize Project Infinity X Source (تهيئة كود الروم لأندرويد 14)
       run: |
         export PATH="$HOME/bin:$PATH"
-        git config --global user.email "cloud-build@evolution.org"
+        git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # استخدام فرع udc المستقر والكامل
-        repo init -u https://github.com/Evolution-X/manifest.git -b udc --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تهيئة كود مصدر Infinity-X الرسمي لأندرويد 14
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 14 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
         cd android
-        # 1. شجرة الجهاز لـ DaniHasReal (فرع lineage_22)
+        # 1. شجرة الجهاز لـ DaniHasReal (فرع lineage_22 المتوافق)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
         # 2. شجرة الـ Vendor المطابقة لـ DaniHasReal (فرع main)
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
@@ -52,17 +52,17 @@ jobs:
         cd android
         repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
 
-    - name: Build Evolution X ROM (بدء التجميع البرمجي من المجلد الصحيح)
+    - name: Build Project Infinity X ROM (بدء التجميع البرمجي من المجلد الصحيح)
       run: |
         export PATH="$HOME/bin:$PATH"
-        # الدخول إلى المجلد الصحيح الذي يحتوي على ملف envsetup.sh
         cd android
         source build/envsetup.sh
-        lunch evo_a04-userdebug
+        # تهيئة بناء روم Infinity لـ a04
+        lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
 
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: EvolutionX-Android14-Samsung-A04
+        name: Project-InfinityX-Samsung-A04
         path: android/out/target/product/a04/*.zip
