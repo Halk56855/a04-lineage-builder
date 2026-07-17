@@ -1,4 +1,4 @@
-name: Project Infinity X Cloud Builder for Samsung A04
+name: Project Matrixx Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,14 +27,14 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Project Infinity X Source (تهيئة كود الروم لفرع أندرويد 15)
+    - name: Initialize Project Matrixx Source (تهيئة كود روم ماتريكس تلقائياً)
       run: |
         export PATH="$HOME/bin:$PATH"
-        git config --global user.email "cloud-build@infinity.org"
+        git config --global user.email "cloud-build@matrixx.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # استخدام الفرع "15" المؤكد وجوده رسميًا في المستودع
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 15 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # تهيئة مستودع Project Matrixx الرسمي والاعتماد على الفرع الافتراضي النشط لديهم تلقائياً
+        repo init -u https://github.com/ProjectMatrixx/android.git --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
@@ -52,16 +52,17 @@ jobs:
         cd android
         repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
 
-    - name: Build Project Infinity X ROM (بدء التجميع البرمجي من المجلد الصحيح)
+    - name: Build Project Matrixx ROM (بدء التجميع البرمجي من المجلد الصحيح)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
         source build/envsetup.sh
-        lunch infinity_a04-userdebug
+        # تهيئة البناء الخاص بروم Matrixx لجهازك
+        lunch matrixx_a04-userdebug
         mka bacon -j$(nproc --all)
 
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: Project-InfinityX-Samsung-A04
+        name: Project-Matrixx-Samsung-A04
         path: android/out/target/product/a04/*.zip
