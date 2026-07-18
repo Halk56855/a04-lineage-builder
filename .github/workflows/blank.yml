@@ -1,4 +1,4 @@
-name: Project Infinity X Android 16 Cloud Builder for Samsung A04
+name: Project Infinity X Android 16 Ultimate Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -10,23 +10,18 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Maximize Free Disk Space (التنظيف الشامل لملفات النظام)
-      run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /usr/share/swift /etc/mono
-        sudo docker image prune --all --force
-        
-        # إعادة توليد مستودعات Ubuntu الافتراضية
-        sudo UBUNTU_CODENAME=$(lsb_release -cs) && sudo tee /etc/apt/sources.list <<EOF
-        deb http://azure.archive.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME main restricted universe multiverse
-        deb http://azure.archive.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-updates main restricted universe multiverse
-        deb http://azure.archive.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-backports main restricted universe multiverse
-        deb http://security.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-security main restricted universe multiverse
-        EOF
-        
-        sudo apt-get clean
-        df -h
+    - name: Maximize Build Space (الاستعانة بالأداة الرسمية لتوفير مساحة قصوى)
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 2048
+        swap-size-mb: 1024
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
 
-    - name: Install Build Dependencies (تثبيت حزم التجميع والبايثون)
+    - name: Install Build Dependencies (تثبيت الحزم والبايثون)
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
@@ -38,14 +33,14 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Project Infinity X Source (تهيئة مخففة جداً)
+    - name: Initialize Project Infinity X Source (مزامنة كاملة بدون فلاتر استبعاد)
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تقييد المجموعات لحذف أدوات الماك والدروين ومنصات x86 تماماً لتوفير 40 جيجابايت
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # رجعنا للمزامنة الكاملة العادية لضمان تحميل سكريبتات الـ Clang والبايثون، معتمدين على مساحة الأداة الجديدة
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1
 
     - name: Clone Samsung A04 Device Tree
       run: |
@@ -54,11 +49,10 @@ jobs:
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code (المزامنة الجراحية المضغوطة)
+    - name: Sync Source Code (المزامنة الرسمية)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        # استخدام معاملات الحظر الصارمة لتفادي جلب البيانات غير الضرورية بالكامل
         repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
     - name: Locate and Verify envsetup.sh
@@ -68,9 +62,10 @@ jobs:
         FOUND_PATH=$(find . -name "envsetup.sh" | head -n 1)
         if [ -n "$FOUND_PATH" ]; then
           CLEAN_PATH=$(echo "$FOUND_PATH" | sed 's|^\./||')
+          echo "✅ تم العثور على الملف والسكريبتات كاملة!"
           echo "envsetup_path=$CLEAN_PATH" >> $GITHUB_ENV
         else
-          echo "❌ خطأ: كود الروم لم يكتمل بسبب قلة المساحة."
+          echo "❌ خطأ"
           exit 1
         fi
 
