@@ -13,7 +13,7 @@ jobs:
     - name: Maximize Build Space (زيادة المساحة بالأداة الرسمية)
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 4096 # زيادة المساحة الاحتياطية للنظام لتجنب المشكلة
+        root-reserve-mb: 4096
         swap-size-mb: 1024
         remove-dotnet: 'true'
         remove-android: 'true'
@@ -31,12 +31,11 @@ jobs:
         deb http://security.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-security main restricted universe multiverse
         EOF
         
-        # تحويل مجلد كاش الـ apt إلى المجلد الموسع لخدعة السيرفر
-        sudo mkdir -p /home/runner/work/apt-cache
+        # استغلال المسار الموسع الجديد لكاش الحزم
+        sudo mkdir -p ${{ github.workspace }}/apt-cache
         sudo rm -rf /var/cache/apt/archives
-        sudo ln -s /home/runner/work/apt-cache /var/cache/apt/archives
+        sudo ln -s ${{ github.workspace }}/apt-cache /var/cache/apt/archives
         
-        # التحديث والتثبيت الآن بأمان ومساحة ضخمة
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
@@ -45,33 +44,35 @@ jobs:
         mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
-        export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Project Infinity X Source
+    - name: Initialize Project Infinity X Source (التمركز داخل المجلد الموسع)
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
-        mkdir android && cd android
+        
+        # الانتقال إجبارياً إلى المجلد الموسع (github.workspace) والعمل داخله
+        cd ${{ github.workspace }}
+        mkdir -p android && cd android
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1
 
     - name: Clone Samsung A04 Device Tree
       run: |
-        cd android
+        cd ${{ github.workspace }}/android
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code
+    - name: Sync Source Code (المزامنة في المساحة الآمنة)
       run: |
         export PATH="$HOME/bin:$PATH"
-        cd android
+        cd ${{ github.workspace }}/android
         repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
     - name: Locate and Verify envsetup.sh
       id: locate_file
       run: |
-        cd android
+        cd ${{ github.workspace }}/android
         FOUND_PATH=$(find . -name "envsetup.sh" | head -n 1)
         if [ -n "$FOUND_PATH" ]; then
           CLEAN_PATH=$(echo "$FOUND_PATH" | sed 's|^\./||')
@@ -84,7 +85,7 @@ jobs:
     - name: Build Project Infinity X ROM
       run: |
         export PATH="$HOME/bin:$PATH"
-        cd android
+        cd ${{ github.workspace }}/android
         TARGET_DIR=$(dirname "${{ env.envsetup_path }}")
         cd $TARGET_DIR
         source envsetup.sh
@@ -95,4 +96,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Project-InfinityX-Android16-Samsung-A04
-        path: android/out/target/product/a04/*.zip
+        path: ${{ github.workspace }}/android/out/target/product/a04/*.zip
