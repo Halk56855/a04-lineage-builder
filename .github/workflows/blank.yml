@@ -1,4 +1,4 @@
-name: Project Infinity X Android 17 Cloud Builder for Samsung A04
+name: Project Infinity X Android 16 Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,19 +27,19 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Project Infinity X Source (تهيئة كود الروم لفرع أندرويد 17)
+    - name: Initialize Project Infinity X Source (تهيئة كود الروم لفرع أندرويد 16)
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # توجيه المزامنة لفرع أندرويد 17 المخصص مع حزمة خفيفة لتجنب انهيار الاتصال
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 17 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
+        # التوجيه للفرع 16 المؤكد والموجود في الصورة
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
         cd android
-        # سحب ملفات جهازك لضمان التوافقية (فرع lineage_22 كمصدر مرجعي مستقر للتعريفات)
+        # سحب ملفات جهازك (فرع lineage_22 المتوافق برمجياً)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
@@ -54,14 +54,14 @@ jobs:
       id: locate_file
       run: |
         cd android
-        echo "=== جاري فحص المجلدات للوصول لملف الإعداد لأندرويد 17 ==="
+        echo "=== جاري فحص المجلدات للوصول لملف الإعداد لأندرويد 16 ==="
         FOUND_PATH=$(find . -name "envsetup.sh" | head -n 1)
         if [ -n "$FOUND_PATH" ]; then
           CLEAN_PATH=$(echo "$FOUND_PATH" | sed 's|^\./||')
           echo "✅ تم العثور على ملف الإعداد بنجاح في: $CLEAN_PATH"
           echo "envsetup_path=$CLEAN_PATH" >> $GITHUB_ENV
         else
-          echo "❌ خطأ: لم يتم العثور على ملف envsetup.sh في أي مجلد فرعي! تأكد من وجود هذا الفرع في مستودع الروم."
+          echo "❌ خطأ فادح: لم يتم العثور على ملف envsetup.sh في أي مكان!"
           ls -R
           exit 1
         fi
@@ -79,5 +79,5 @@ jobs:
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: Project-InfinityX-Android17-Samsung-A04
+        name: Project-InfinityX-Android16-Samsung-A04
         path: android/out/target/product/a04/*.zip
