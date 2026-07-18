@@ -33,8 +33,8 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        # الاعتماد على مسار غيت هاب الرسمي والمضمون للسيرفر
-        mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
+        # إنشاء مجلد العمل والدخول إليه مباشرة باستخدام مسار نسبي آمن
+        mkdir -p android && cd android
         
         # تهيئة الـ repo مع الفلترة الذكية للمساحة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
@@ -51,15 +51,18 @@ jobs:
         # جلب الـ clang يدوياً وبعمق 1 لضمان بقائه في المسار الصحيح تماماً
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
-        # جلب أشجار ملفات جهازك السامسونج A04 (تم تصحيح رابط الـ Vendor بناءً على تحديثك)
+        # جلب أشجار ملفات جهازك السامسونج A04
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # التأكيد الإجباري على مسار تنفيذ ملفات الـ Build قبل الطبخ
-        cd $GITHUB_WORKSPACE/android
+        # طباعة المسار الحالي والملفات المتواجدة للمطورة (Debug) لقطع الشك باليقين
+        echo "=== المسار الحالي هو ==="
+        pwd
+        echo "=== الملفات المتواجدة في المجلد الحالي ==="
+        ls -F
         
-        # تفعيل البيئة وبدء تجميع الروم
-        source build/envsetup.sh
+        # تفعيل البيئة وبدء تجميع الروم باستخدام نقطة المسار الحالي
+        . ./build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
