@@ -33,7 +33,6 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        # إنشاء مجلد العمل والدخول إليه مباشرة باستخدام مسار نسبي آمن
         mkdir -p android && cd android
         
         # تهيئة الـ repo مع الفلترة الذكية للمساحة
@@ -56,13 +55,17 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # طباعة المسار الحالي والملفات المتواجدة للمطورة (Debug) لقطع الشك باليقين
-        echo "=== المسار الحالي هو ==="
-        pwd
-        echo "=== الملفات المتواجدة في المجلد الحالي ==="
-        ls -F
+        # البحث الديناميكي الذكي عن الملف لتفادي اختلاف الهياكل بين الرومات
+        ENV_SCRIPT=$(find . -name "envsetup.sh" | grep -v "vendor/infinity" | head -n 1)
         
-        # تفعيل البيئة وبدء تجميع الروم باستخدام نقطة المسار الحالي
-        . ./build/envsetup.sh
+        if [ -z "$ENV_SCRIPT" ]; then
+          echo "خطأ فادح: لم يتم العثور على ملف envsetup.sh في أي مكان!"
+          exit 1
+        fi
+        
+        echo "تم العثور على سكريبت التفعيل في المسار التالي: $ENV_SCRIPT"
+        
+        # تفعيل البيئة وبدء تجميع الروم بناءً على المسار المكتشف ديناميكياً
+        . $ENV_SCRIPT
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
