@@ -38,10 +38,10 @@ jobs:
         
         mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
         
-        # تهيئة خفيفة وعميقة جداً للسورس الأساسي
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --groups=all,-notdefault,-device,-vos,-pdk,-darwin
+        # تهيئة نظيفة للسورس وبحجم محدد عميق 1 بدون تعقيد الفلاتر
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs
         
-        # المزامنة الصحيحة والمصلحة بدون الخيار المسبب للخطأ
+        # المزامنة الكاملة والسريعة لجلب كافة الملفات الأساسية والنظامية
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
         
         # جلب شجرة ملفات السامسونج A04 الخاصة بك بدقة
@@ -49,7 +49,7 @@ jobs:
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # الإعداد وبدء التجميع والطبخ للروم
+        # التأكد من وجود بيئة العمل ثم الإعداد والطبخ للروم
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
