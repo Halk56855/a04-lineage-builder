@@ -10,10 +10,10 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Maximize Build Space (الاستعانة بالأداة الرسمية لتوفير مساحة قصوى)
+    - name: Maximize Build Space (زيادة المساحة بالأداة الرسمية)
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 2048
+        root-reserve-mb: 4096 # زيادة المساحة الاحتياطية للنظام لتجنب المشكلة
         swap-size-mb: 1024
         remove-dotnet: 'true'
         remove-android: 'true'
@@ -21,8 +21,22 @@ jobs:
         remove-codeql: 'true'
         remove-docker-images: 'true'
 
-    - name: Install Build Dependencies (تثبيت الحزم والبايثون)
+    - name: Fix APT Storage and Install Dependencies (حل مشكلة مساحة التثبيت)
       run: |
+        # إعادة توليد مستودعات Ubuntu الافتراضية
+        sudo UBUNTU_CODENAME=$(lsb_release -cs) && sudo tee /etc/apt/sources.list <<EOF
+        deb http://azure.archive.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME main restricted universe multiverse
+        deb http://azure.archive.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-updates main restricted universe multiverse
+        deb http://azure.archive.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-backports main restricted universe multiverse
+        deb http://security.ubuntu.com/ubuntu/ \$UBUNTU_CODENAME-security main restricted universe multiverse
+        EOF
+        
+        # تحويل مجلد كاش الـ apt إلى المجلد الموسع لخدعة السيرفر
+        sudo mkdir -p /home/runner/work/apt-cache
+        sudo rm -rf /var/cache/apt/archives
+        sudo ln -s /home/runner/work/apt-cache /var/cache/apt/archives
+        
+        # التحديث والتثبيت الآن بأمان ومساحة ضخمة
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
@@ -33,13 +47,12 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Project Infinity X Source (مزامنة كاملة بدون فلاتر استبعاد)
+    - name: Initialize Project Infinity X Source
       run: |
         export PATH="$HOME/bin:$PATH"
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # رجعنا للمزامنة الكاملة العادية لضمان تحميل سكريبتات الـ Clang والبايثون، معتمدين على مساحة الأداة الجديدة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1
 
     - name: Clone Samsung A04 Device Tree
@@ -49,7 +62,7 @@ jobs:
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code (المزامنة الرسمية)
+    - name: Sync Source Code
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
@@ -62,7 +75,6 @@ jobs:
         FOUND_PATH=$(find . -name "envsetup.sh" | head -n 1)
         if [ -n "$FOUND_PATH" ]; then
           CLEAN_PATH=$(echo "$FOUND_PATH" | sed 's|^\./||')
-          echo "✅ تم العثور على الملف والسكريبتات كاملة!"
           echo "envsetup_path=$CLEAN_PATH" >> $GITHUB_ENV
         else
           echo "❌ خطأ"
