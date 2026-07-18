@@ -6,7 +6,7 @@ container:
     - /home/cirrus:/home/cirrus
 
 build_job:
-  timeout_in: 120m # وقت طويل للبناء
+  timeout_in: 120m
   environment:
     CIRRUS_CLONE_DEPTH: 1
   
@@ -34,3 +34,4 @@ build_job:
     - source build/envsetup.sh
     - lunch infinity_a04-userdebug
     - mka bacon -j$(nproc --all)
+# start build
