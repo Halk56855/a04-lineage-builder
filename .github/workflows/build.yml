@@ -1,4 +1,4 @@
-name: Android 16 Ultra Cleaner & Builder
+name: Android 16 Fast Tree Sync & Build
 
 on:
   workflow_dispatch:
@@ -12,8 +12,6 @@ jobs:
 
     - name: Maximizing Disk Space (Hard Clean)
       run: |
-        echo "=== المساحة قبل التنظيف ==="
-        df -h
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf /usr/local/lib/android
         sudo rm -rf /opt/ghc
@@ -22,40 +20,36 @@ jobs:
         sudo rm -rf /opt/pipx
         sudo rm -rf /usr/local/.ghcup
         sudo apt-get clean
-        echo "=== المساحة بعد التنظيف ==="
-        df -h
 
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    - name: Setup Repo Tool & Run Build
+    - name: Setup Repo Tool & Run Smart Build
       run: |
-        # إعداد أداة repo محلياً وتفعيلها في البيئة الحالية
         mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
         
-        # إعدادات جيت
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        # إنشاء مجلد العمل والانتقال إليه
         mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
         
-        # جلب السورس والشجرة
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1
+        # تهيئة خفيفة وعميقة جداً للسورس الأساسي
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --groups=all,-notdefault,-device,-vos,-pdk,-darwin
         
-        git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
-        git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
-        git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
+        # مزامنة سريعة مع تفعيل خيارات تقليص الحجم القصوى وحفظ الجلسة
+        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch --clean-midstream
         
-        # المزامنة مع تفعيل وضع توفير المساحة القصوى ونقاط الفحص
-        repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j2
+        # جلب شجرة ملفات السامسونج A04 الخاصة بك بدقة
+        git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
+        git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
+        git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # بدء عملية بناء الروم لـ A04
+        # الإعداد وبدء التجميع والطبخ للروم
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
