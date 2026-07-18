@@ -1,4 +1,4 @@
-name: Evolution X Cloud Builder for Samsung A04
+name: Project Infinity X Android 17 Cloud Builder for Samsung A04
 
 on:
   workflow_dispatch: # تشغيل يدوّي بضغطة زر
@@ -27,62 +27,57 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
 
-    - name: Initialize Evolution X Source (تهيئة كود ايفولوشن إكس لفرع cnb)
+    - name: Initialize Project Infinity X Source (تهيئة كود الروم لفرع أندرويد 17)
       run: |
         export PATH="$HOME/bin:$PATH"
-        git config --global user.email "cloud-build@evolution.org"
+        git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تهيئة كاملة ومبسطة للمستودع لضمان جلب كافة الفروع والأدوات الرئيسية
-        repo init -u https://github.com/Evolution-X/manifest.git -b cnb --git-lfs --depth=1
+        # توجيه المزامنة لفرع أندرويد 17 المخصص مع حزمة خفيفة لتجنب انهيار الاتصال
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 17 --git-lfs --depth=1 --groups=all,-notdefault,-darwin,-pdk,-arm64-ndk,-mips,-x86
         
     - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
       run: |
         cd android
-        # 1. شجرة الجهاز لـ DaniHasReal (فرع lineage_22)
+        # سحب ملفات جهازك لضمان التوافقية (فرع lineage_22 كمصدر مرجعي مستقر للتعريفات)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
-        # 2. شجرة الـ Vendor المطابقة لـ DaniHasReal (فرع main)
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
-        # 3. مستودع الكيرنل المشترك لـ DaniTheSillyFem (فرع linux-4.19.y)
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
     - name: Sync Source Code (بدء المزامنة السحابية للروم)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        # مزامنة سحابية كاملة وعميقة لضمان تحميل مجلد build الرئيسي
-        repo sync -c --force-sync --no-clone-bundle --no-tags -j$(nproc --all)
+        repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
-    - name: Locate and Verify envsetup.sh (البحث الذكي عن ملف الإعداد وتأكيده)
+    - name: Locate and Verify envsetup.sh (البحث الذكي والديناميكي عن ملف الإعداد)
       id: locate_file
       run: |
         cd android
-        echo "=== البحث عن ملف envsetup.sh في جميع المجلدات ==="
+        echo "=== جاري فحص المجلدات للوصول لملف الإعداد لأندرويد 17 ==="
         FOUND_PATH=$(find . -name "envsetup.sh" | head -n 1)
         if [ -n "$FOUND_PATH" ]; then
-          # إزالة النقطة الزائدة من بداية المسار للحصول على مسار نظيف
           CLEAN_PATH=$(echo "$FOUND_PATH" | sed 's|^\./||')
-          echo "✅ تم العثور على الملف في المسار التالي: $CLEAN_PATH"
+          echo "✅ تم العثور على ملف الإعداد بنجاح في: $CLEAN_PATH"
           echo "envsetup_path=$CLEAN_PATH" >> $GITHUB_ENV
         else
-          echo "❌ خطأ فادح: لم يتم العثور على ملف envsetup.sh في أي مكان!"
+          echo "❌ خطأ: لم يتم العثور على ملف envsetup.sh في أي مجلد فرعي! تأكد من وجود هذا الفرع في مستودع الروم."
           ls -R
           exit 1
         fi
 
-    - name: Build Evolution X ROM (بدء التجميع التلقائي بناءً على المسار المكتشف)
+    - name: Build Project Infinity X ROM (بدء التجميع التلقائي بناءً على المسار المكتشف)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        # استخراج المجلد الأب لملف envsetup.sh والدخول إليه لبدء التجميع
         TARGET_DIR=$(dirname "${{ env.envsetup_path }}")
         cd $TARGET_DIR
         source envsetup.sh
-        lunch evo_a04-userdebug
+        lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
 
     - name: Upload Flashable ROM (رفع ملف الروم النهائي)
       uses: actions/upload-artifact@v4
       with:
-        name: EvolutionX-CNB-Samsung-A04
+        name: Project-InfinityX-Android17-Samsung-A04
         path: android/out/target/product/a04/*.zip
