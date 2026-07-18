@@ -10,16 +10,17 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Maximizing Disk Space (Hard Clean)
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /usr/local/share/powershell
-        sudo rm -rf /share/swift
-        sudo rm -rf /opt/pipx
-        sudo rm -rf /usr/local/.ghcup
-        sudo apt-get clean
+    # الخطوة السحرية: إعادة هيكلة القرص لتوفير مساحة تفوق 100 جيجابايت
+    - name: Maximize GitHub Actions Build Space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 2048
+        swap-size-mb: 1024
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
 
     - name: Install Build Dependencies
       run: |
@@ -36,12 +37,13 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
+        # الانتقال إلى مساحة العمل الموسعة الجديدة
         mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
         
-        # تهيئة نظيفة للسورس وبحجم محدد عميق 1 بدون تعقيد الفلاتر
+        # تهيئة خفيفة وعميقة جداً للسورس الأساسي
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs
         
-        # المزامنة الكاملة والسريعة لجلب كافة الملفات الأساسية والنظامية
+        # المزامنة مع حصر الاتصال لتفادي استهلاك المساحة العشوائي
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
         
         # جلب شجرة ملفات السامسونج A04 الخاصة بك بدقة
@@ -49,7 +51,7 @@ jobs:
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # التأكد من وجود بيئة العمل ثم الإعداد والطبخ للروم
+        # الإعداد وبدء التجميع والطبخ للروم
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
