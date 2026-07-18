@@ -41,8 +41,8 @@ jobs:
         # تهيئة خفيفة وعميقة جداً للسورس الأساسي
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --groups=all,-notdefault,-device,-vos,-pdk,-darwin
         
-        # مزامنة سريعة مع تفعيل خيارات تقليص الحجم القصوى وحفظ الجلسة
-        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch --clean-midstream
+        # المزامنة الصحيحة والمصلحة بدون الخيار المسبب للخطأ
+        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
         
         # جلب شجرة ملفات السامسونج A04 الخاصة بك بدقة
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
