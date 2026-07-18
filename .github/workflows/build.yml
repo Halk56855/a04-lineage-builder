@@ -1,4 +1,4 @@
-name: Android 16 Ultra Selective Sync & Build
+name: Android 16 Precision Sync & Build
 
 on:
   workflow_dispatch:
@@ -33,29 +33,33 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        mkdir -p /home/runner/android && cd /home/runner/android
+        # الاعتماد على مسار غيت هاب الرسمي والمضمون للسيرفر
+        mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
         
-        # تهيئة الـ repo مع فلترة استباقية صارمة للتخلص من كافة المنصات غير الأساسية
+        # تهيئة الـ repo مع الفلترة الذكية للمساحة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
-        # حيلة التخلص من مجلدات الـ clang والمترجمات المسبقة التي تسبب امتلاء الذاكرة لتنزيلها بشكل انتقائي لاحقاً
+        # إزالة الحزم المتسببة بامتلاء الذاكرة تلقائياً
         if [ -f .repo/manifests/default.xml ]; then
           sed -i '/platform\/prebuilts\/clang\/host\/linux-x86/d' .repo/manifests/default.xml
           sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
         fi
         
-        # مزامنة سورس النظام المفلتر والآمن مساحاتياً
+        # المزامنة القياسية المستقرة للروم
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # الآن نقوم بجلب الـ clang الأساسي فقط يدوياً وبعمق 1 لتجنب جلب كامل تاريخ الملفات الضخم
+        # جلب الـ clang يدوياً وبعمق 1 لضمان بقائه في المسار الصحيح تماماً
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
-        # جلب أشجار ملفات السامسونج A04
+        # جلب أشجار ملفات جهازك السامسونج A04 (تم تصحيح رابط الـ Vendor بناءً على تحديثك)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
-        git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
+        git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تفعيل البيئة وبدء التجميع الفعلي
+        # التأكيد الإجباري على مسار تنفيذ ملفات الـ Build قبل الطبخ
+        cd $GITHUB_WORKSPACE/android
+        
+        # تفعيل البيئة وبدء تجميع الروم
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
