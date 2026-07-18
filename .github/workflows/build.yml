@@ -1,4 +1,4 @@
-name: Android 16 Ultra Light Sync & Build
+name: Android 16 Safe Sync & Build
 
 on:
   workflow_dispatch:
@@ -33,19 +33,14 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        # إنشاء مسار العمل الأساسي الثابت
+        # إنشاء مسار العمل الأساسي
         mkdir -p /home/runner/android && cd /home/runner/android
         
-        # تهيئة الـ repo
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm
+        # تهيئة كاملة آمنة (تم إلغاء الاستبعادات الخاطئة التي حذفت مجلد build) 
+        # مع استخدام depth=1 و --partial-clone لتوفير هائل في المساحة بدون تخريب السورس
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs --partial-clone --clone-filter=blob:none
 
-        # تعديل المانيفست محلياً لتفادي الملفات الضخمة
-        if [ -f .repo/manifests/default.xml ]; then
-          sed -i '/platform\/prebuilts\/clang\/host\/darwin-x86/d' .repo/manifests/default.xml
-          sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
-        fi
-        
-        # المزامنة
+        # المزامنة القياسية المستقرة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
         
         # جلب أشجار ملفات السامسونج A04
@@ -53,12 +48,7 @@ jobs:
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # الحيلة الذكية: تحديد مكان السورس الفعلي في حال اختلف المسار والتوجه إليه
-        TARGET_DIR=$(dirname $(find /home/runner -name "envsetup.sh" | head -n 1))
-        cd "$TARGET_DIR"
-        echo "تنبيه: تم العثور على ملفات السورس والتوجه إلى المسار التالي بنجاح: $TARGET_DIR"
-        
-        # تفعيل البيئة وبدء التجميع الفعلي
+        # تفعيل البيئة وبدء التجميع الفعلي من المجلد الرئيسي
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
