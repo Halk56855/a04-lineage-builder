@@ -33,27 +33,27 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
+        # إنشاء المجلد والدخول إليه
         mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
         
-        # تهيئة بأقل عمق ممكن (1) مع استثناء الأنظمة غير المتوافقة لتوفير عشرات الجيغابايتات
+        # تهيئة الـ repo
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm
 
-        # حيلة التخلص من المجلدات والمحاكيات والأدوات الضخمة غير اللازمة لبناء روم السامسونج
-        # سنقوم بالتعديل على المانيفست محلياً قبل السينك لحذف المشاريع المسببة لامتلاء الذاكرة
+        # تعديل المانيفست محلياً لتفادي الملفات الضخمة
         if [ -f .repo/manifests/default.xml ]; then
           sed -i '/platform\/prebuilts\/clang\/host\/darwin-x86/d' .repo/manifests/default.xml
           sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
         fi
         
-        # المزامنة الذكية الخفيفة جداً بقناة اتصال واحدة لتقليص استهلاك الكاش والذاكرة المؤقتة
-        repo sync -c -j1 --force-sync --no-clone-bundle --no-tags --current-branch
+        # المزامنة
+        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
         
-        # جلب شجرة ملفات السامسونج A04 الخاصة بك بدقة
+        # جلب أشجار ملفات جهازك (Samsung A04)
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # الإعداد وبدء التجميع والطبخ للروم
+        # التجميع النهائي (تم دمج الأوامر للتأكد من البقاء في نفس المسار)
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
