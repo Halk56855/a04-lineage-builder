@@ -33,8 +33,8 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        # إنشاء المجلد والدخول إليه
-        mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
+        # إنشاء مسار العمل الأساسي الثابت
+        mkdir -p /home/runner/android && cd /home/runner/android
         
         # تهيئة الـ repo
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm
@@ -48,12 +48,17 @@ jobs:
         # المزامنة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
         
-        # جلب أشجار ملفات جهازك (Samsung A04)
+        # جلب أشجار ملفات السامسونج A04
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # التجميع النهائي (تم دمج الأوامر للتأكد من البقاء في نفس المسار)
+        # الحيلة الذكية: تحديد مكان السورس الفعلي في حال اختلف المسار والتوجه إليه
+        TARGET_DIR=$(dirname $(find /home/runner -name "envsetup.sh" | head -n 1))
+        cd "$TARGET_DIR"
+        echo "تنبيه: تم العثور على ملفات السورس والتوجه إلى المسار التالي بنجاح: $TARGET_DIR"
+        
+        # تفعيل البيئة وبدء التجميع الفعلي
         source build/envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
