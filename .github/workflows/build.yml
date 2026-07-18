@@ -33,8 +33,8 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         
-        # إنشاء المجلد في المساحة الفارغة المخصصة للعمل للوصول لأقصى سعة
-        mkdir -p ${{ github.workspace }}/android && cd ${{ github.workspace }}/android
+        # استخدام المسار البيئي الافتراضي مباشرة لتجنب أخطاء الأقواس
+        mkdir -p $GITHUB_WORKSPACE/android && cd $GITHUB_WORKSPACE/android
         
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1
         
