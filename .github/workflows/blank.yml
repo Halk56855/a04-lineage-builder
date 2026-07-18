@@ -10,12 +10,15 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Free Disk Space (تفريغ مساحة السيرفر الكبيرة)
+    - name: Maximize Free Disk Space (تطهير شامل للسيرفر لتوفير مساحة ضخمة)
       run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/swift /etc/mono
         sudo docker image prune --all --force
+        sudo apt-get clean
+        df -h # طباعة المساحة المتاحة بعد التنظيف للتأكد
 
-    - name: Install Build Dependencies (تثبيت أدوات البناء والـ Python المفقود)
+    - name: Install Build Dependencies (تثبيت أدوات البناء والـ Python الفعال)
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
@@ -33,24 +36,24 @@ jobs:
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
         mkdir android && cd android
-        # تهيئة الفرع 16 مع إتاحة سحب أدوات الـ compiler الأساسية لأندرويد 16
+        # استخدام التنزيل السطحي الـ العميق لتقليل استهلاك المساحة لأقصى حد ممكن
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --git-lfs --depth=1
-        
-    - name: Clone Samsung A04 Device Tree (سحب الملفات المتوافقة كلياً لجهازك)
+
+    - name: Clone Samsung A04 Device Tree (سحب ملفات جهازك)
       run: |
         cd android
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04
         git clone https://github.com/DaniHasReal/android_vendor_samsung_a04.git -b main vendor/samsung/a04
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04
 
-    - name: Sync Source Code (بدء المزامنة السحابية للروم)
+    - name: Sync Source Code (بدء المزامنة السحابية الذكية)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
-        # مزامنة تركز على جلب ملفات البناء والأدوات دون انقطاع
+        # مزامنة محسنة ومضغوطة جداً لتجنب امتلاء الهارد ديسك
         repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
-    - name: Locate and Verify envsetup.sh (البحث الذكي والديناميكي عن ملف الإعداد)
+    - name: Locate and Verify envsetup.sh (البحث الديناميكي لضمان المسار)
       id: locate_file
       run: |
         cd android
@@ -61,17 +64,17 @@ jobs:
           echo "✅ تم العثور على ملف الإعداد بنجاح في: $CLEAN_PATH"
           echo "envsetup_path=$CLEAN_PATH" >> $GITHUB_ENV
         else
-          echo "❌ خطأ فادح: لم يتم العثور على ملف envsetup.sh في أي مكان!"
+          echo "❌ خطأ فادح: لم يتم العثور على ملف envsetup.sh!"
           exit 1
         fi
 
-    - name: Build Project Infinity X ROM (بدء التجميع التلقائي بناءً على المسار المكتشف)
+    - name: Build Project Infinity X ROM (بدء التجميع التلقائي)
       run: |
         export PATH="$HOME/bin:$PATH"
         cd android
         TARGET_DIR=$(dirname "${{ env.envsetup_path }}")
         cd $TARGET_DIR
-        # تشغيل السكربت بعد إصلاح بيئة البايثون في السيرفر
+        # تشغيل البيئة بعد ربط البايثون وتحديد المجلد الصحيح
         source envsetup.sh
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
