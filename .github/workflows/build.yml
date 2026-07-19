@@ -44,39 +44,30 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # إزالة أي مخلفات قديمة لمجلد build
+        # جلب مستودعات البناء الأساسية لأندرويد 16 بعمق 1
         rm -rf build
-
-        # جلب مستودع بناء أندرويد 16 الرسمي كاملاً وبشكل حقيقي ولكن بعمق 1 فقط (سريع وخفيف جداً)
         git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1
-
-        # جلب نظام بناء Soong لأندرويد 16 بشكل حقيقي وكامل أيضاً بعمق 1
+        
         rm -rf build/soong
         git clone https://android.googlesource.com/platform/build/soong -b android-16.0.0_r1 build/soong --depth=1
 
-        # ربط المسارات المطلقة لتفادي مشاكل التحقق داخل الحاوية
-        sudo rm -f /build
-        sudo ln -s $(pwd)/build /build
-
-        if [ -d "vendor/infinity" ]; then
-          mkdir -p vendor/lineage
-          ln -s ../infinity/build vendor/lineage/build 2>/dev/null || true
-        fi
-
-        # سحب بقية مستودعات وأشجار جهازك سامسونج A04
+        # جلب أشجار جهازك سامسونج A04 والـ Clang
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
-        
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
-        
-        # تصدير متغيرات البيئة الأساسية بشكل صارم لتخطي أي فحص أوتوماتيكي مجدداً
+
+        # تهيئة مسارات وهمية سريعة لإقناع الأدوات الفرعية بوجود هيكل شجرة مستقل
+        mkdir -p build/make/core
+        touch build/make/core/envsetup.mk
+        touch Makefile
+
+        # تصدير البيئة يدوياً بشكل صارم وكامل
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
-        
-        # تفعيل البيئة من السورس الرسمي المتكامل
-        . build/envsetup.sh
-        
-        # الانتقال لتجهيز الروم والتجميع
-        lunch infinity_a04-userdebug
-        mka bacon -j$(nproc --all)
+        export TARGET_PRODUCT=infinity_a04
+        export TARGET_BUILD_VARIANT=userdebug
+
+        # استدعاء أداة البناء Soong مباشرة لتجاوز خطأ تعذر تحديد شجرة الملفات (Top of the tree)
+        chmod +x build/soong/soong_ui.bash
+        ./build/soong/soong_ui.bash --make-mode bacon -j$(nproc --all)
