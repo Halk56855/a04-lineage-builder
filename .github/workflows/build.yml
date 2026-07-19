@@ -44,27 +44,15 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # إنشاء الهيكل الكامل للمجلدات الفرعية المطلوبة لنظام بناء أندرويد
-        mkdir -p build/core
-        mkdir -p build/make/core
-        
-        # جلب ملف envsetup.sh الرئيسي
-        curl -sL https://github.com/LineageOS/android_build/raw/lineage-22.1/envsetup.sh -o build/envsetup.sh
-        chmod +x build/envsetup.sh
+        # إزالة أي مجلدات تالفة أو ناقصة تم إنشاؤها سابقاً
+        rm -rf build
 
-        # جلب الملف المساعد المفقود shell_utils.sh الذي تسبب في الخطأ الأخير
-        curl -sL https://github.com/LineageOS/android_build_make/raw/lineage-22.1/shell_utils.sh -o build/make/shell_utils.sh
-        chmod +x build/make/shell_utils.sh
+        # جلب مستودع build/make الرسمي بالكامل مع فلترة مساحة صارمة جداً (تسحب السكربتات والملفات فقط بدون كود ثقيل)
+        git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1 --filter=tree:0
 
-        # تزييف بقية ملفات التحقق لضمان توافق بيئة العمل
-        touch Makefile
-        touch build/core/main.mk
-        touch build/make/core/envsetup.mk
-        echo "include build/make/core/envsetup.mk" > build/core/config.mk
-
-        # جلب مستودع Soong لحل أزمة سكربتات البايثون
+        # جلب مستودع Soong المتوافق مع أندرويد 16 لحل أزمة سكربتات البايثون الفاحصة
         rm -rf build/soong
-        git clone https://github.com/LineageOS/android_build_soong.git -b lineage-22.1 build/soong --depth=1
+        git clone https://android.googlesource.com/platform/build/soong -b android-16.0.0_r1 build/soong --depth=1 --filter=tree:0
 
         # ربط المسارات المطلقة لتفادي مشاكل التحقق
         sudo rm -f /build
@@ -82,10 +70,10 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تصدير المسار الجذري بشكل صارم
+        # تصدير المسار الجذري بشكل صارم ومباشر
         export ANDROID_BUILD_TOP=$(pwd)
         
-        # استدعاء ملف تفعيل البيئة بعد إمداده بالاعتماديات المطلوبة
+        # تفعيل البيئة من الملف النظيف والرسمي المستورد بالكامل
         . build/envsetup.sh
         
         # الانتقال لتجهيز الروم والتجميع
