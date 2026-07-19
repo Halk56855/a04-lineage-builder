@@ -44,15 +44,12 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        mkdir -p build/soong/scripts
-        mkdir -p build/soong/cc/config
-        
-        curl -sL https://github.com/LineageOS/android_build_soong/raw/lineage-22.1/scripts/get_clang_version.py -o build/soong/scripts/get_clang_version.py
-        chmod +x build/soong/scripts/get_clang_version.py
+        # جلب مستودع build_soong بالكامل بعمق 1 لضمان وجود كافة ملفات الـ config الرسمية والصحيحة
+        rm -rf build/soong
+        git clone https://github.com/LineageOS/android_build_soong.git -b lineage-22.1 build/soong --depth=1
 
-        echo 'package config' > build/soong/cc/config/global.go
-        echo 'const ClangDefaultVersion = "clang-r584948b"' >> build/soong/cc/config/global.go
-
+        # ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
+        sudo rm -f /build
         sudo ln -s $(pwd)/build /build
 
         if [ -d "vendor/infinity" ]; then
