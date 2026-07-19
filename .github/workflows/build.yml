@@ -35,38 +35,37 @@ jobs:
         
         mkdir -p android && cd android
         
-        # تهيئة الـ repo مع الفلترة الذكية للمساحة
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
+        # إلغاء الفلاتر التي تسببت بحذف مجلد البناء الأساسي (build/)
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs
 
-        # إزالة الحزم المتسببة بامتلاء الذاكرة تلقائياً
+        # إزالة الحزم الضخمة غير الضرورية من المانيفست للحفاظ على المساحة
         if [ -f .repo/manifests/default.xml ]; then
           sed -i '/platform\/prebuilts\/clang\/host\/linux-x86/d' .repo/manifests/default.xml
           sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
         fi
         
-        # المزامنة القياسية المستقرة للروم
+        # المزامنة الكاملة والمستقرة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب الـ clang يدوياً وبعمق 1 لضمان بقائه في المسار الصحيح تماماً
+        # جلب الـ clang يدوياً بعمق 1
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
-        # جلب أشجار ملفات جهازك السامسونج A04
+        # جلب أشجار ملفات السامسونج A04
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # المسار الصارم والنهائي لبيئة بناء أندرويد 16 الموحد
+        # تفعيل البيئة بعد التأكد من تحميل مجلد build/make/ بنجاح
         if [ -f "build/make/envsetup.sh" ]; then
-          echo "تم العثور على البيئة الرسمية في build/make/envsetup.sh"
           . build/make/envsetup.sh
         elif [ -f "build/envsetup.sh" ]; then
-          echo "تم العثور على البيئة الافتراضية في build/envsetup.sh"
           . build/envsetup.sh
         else
-          echo "محاولة أخيرة للتشغيل المباشر عبر المجلدات المتوفرة"
-          . lineage/build/envsetup.sh || . tools/build/envsetup.sh
+          echo "بحث شامل عن السكربت في حال تغير مساره الافتراضي:"
+          FOUND_SCRIPT=$(find . -name "envsetup.sh" | grep -v "cts" | head -n 1)
+          . $FOUND_SCRIPT
         fi
         
-        # بدء تهيئة الجهاز وتجميع الروم
+        # بدء تجميع الروم
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
