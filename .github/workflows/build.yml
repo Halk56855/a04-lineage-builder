@@ -55,17 +55,18 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # البحث الديناميكي الذكي عن الملف لتفادي اختلاف الهياكل بين الرومات
-        ENV_SCRIPT=$(find . -name "envsetup.sh" | grep -v "vendor/infinity" | head -n 1)
-        
-        if [ -z "$ENV_SCRIPT" ]; then
-          echo "خطأ فادح: لم يتم العثور على ملف envsetup.sh في أي مكان!"
-          exit 1
+        # المسار الصارم والنهائي لبيئة بناء أندرويد 16 الموحد
+        if [ -f "build/make/envsetup.sh" ]; then
+          echo "تم العثور على البيئة الرسمية في build/make/envsetup.sh"
+          . build/make/envsetup.sh
+        elif [ -f "build/envsetup.sh" ]; then
+          echo "تم العثور على البيئة الافتراضية في build/envsetup.sh"
+          . build/envsetup.sh
+        else
+          echo "محاولة أخيرة للتشغيل المباشر عبر المجلدات المتوفرة"
+          . lineage/build/envsetup.sh || . tools/build/envsetup.sh
         fi
         
-        echo "تم العثور على سكريبت التفعيل في المسار التالي: $ENV_SCRIPT"
-        
-        # تفعيل البيئة وبدء تجميع الروم بناءً على المسار المكتشف ديناميكياً
-        . $ENV_SCRIPT
+        # بدء تهيئة الجهاز وتجميع الروم
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
