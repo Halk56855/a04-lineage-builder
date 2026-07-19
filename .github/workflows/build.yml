@@ -35,52 +35,38 @@ jobs:
         
         mkdir -p android && cd android
         
-        # فلاتر المساحة القوية للحفاظ على القرص
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
-        # إزالة الحزم الضخمة المتسببة بامتلاء الذاكرة
         if [ -f .repo/manifests/default.xml ]; then
           sed -i '/platform\/prebuilts\/clang\/host\/linux-x86/d' .repo/manifests/default.xml
           sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
         fi
         
-        # المزامنة الخفيفة السريعة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # بناء هيكلية المجلدات المطلوبة لـ Soong وجلب الملفات الأساسية
         mkdir -p build/soong/scripts
         mkdir -p build/soong/cc/config
         
         curl -sL https://github.com/LineageOS/android_build_soong/raw/lineage-22.1/scripts/get_clang_version.py -o build/soong/scripts/get_clang_version.py
         chmod +x build/soong/scripts/get_clang_version.py
 
-        # إنشاء ملف global.go الوهمي بالمحتوى المتوقع لمنع خطأ الـ Python
-        cat << 'EOF' > build/soong/cc/config/global.go
-        package config
-        // ClangDefaultVersion المتوقع من السكربت لقراءته
-        const ClangDefaultVersion = "clang-r584948b"
-EOF
+        echo 'package config' > build/soong/cc/config/global.go
+        echo 'const ClangDefaultVersion = "clang-r584948b"' >> build/soong/cc/config/global.go
 
-        # ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
         sudo ln -s $(pwd)/build /build
 
-        # حل مشكلة تداخل مسارات البناء الأخرى عبر روابط رمزية
         if [ -d "vendor/infinity" ]; then
           mkdir -p vendor/lineage
           ln -s ../infinity/build vendor/lineage/build 2>/dev/null || true
         fi
 
-        # جلب الـ clang يدوياً وبعمق 1 لضمان استقرار المساحة
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
-        # جلب أشجار ملفات جهازك السامسونج A04
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تفعيل بيئة الروم المعتمدة
         . vendor/infinity/build/envsetup.sh
         
-        # بدء تجميع الروم
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
