@@ -44,17 +44,17 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # إزالة أي مجلدات تالفة أو ناقصة تم إنشاؤها سابقاً
+        # إزالة أي مخلفات قديمة لمجلد build
         rm -rf build
 
-        # جلب مستودع build/make الرسمي بالكامل مع فلترة مساحة صارمة جداً (تسحب السكربتات والملفات فقط بدون كود ثقيل)
-        git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1 --filter=tree:0
+        # جلب مستودع بناء أندرويد 16 الرسمي كاملاً وبشكل حقيقي ولكن بعمق 1 فقط (سريع وخفيف جداً)
+        git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1
 
-        # جلب مستودع Soong المتوافق مع أندرويد 16 لحل أزمة سكربتات البايثون الفاحصة
+        # جلب نظام بناء Soong لأندرويد 16 بشكل حقيقي وكامل أيضاً بعمق 1
         rm -rf build/soong
-        git clone https://android.googlesource.com/platform/build/soong -b android-16.0.0_r1 build/soong --depth=1 --filter=tree:0
+        git clone https://android.googlesource.com/platform/build/soong -b android-16.0.0_r1 build/soong --depth=1
 
-        # ربط المسارات المطلقة لتفادي مشاكل التحقق
+        # ربط المسارات المطلقة لتفادي مشاكل التحقق داخل الحاوية
         sudo rm -f /build
         sudo ln -s $(pwd)/build /build
 
@@ -70,10 +70,11 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تصدير المسار الجذري بشكل صارم ومباشر
+        # تصدير متغيرات البيئة الأساسية بشكل صارم لتخطي أي فحص أوتوماتيكي مجدداً
         export ANDROID_BUILD_TOP=$(pwd)
+        export TOP=$(pwd)
         
-        # تفعيل البيئة من الملف النظيف والرسمي المستورد بالكامل
+        # تفعيل البيئة من السورس الرسمي المتكامل
         . build/envsetup.sh
         
         # الانتقال لتجهيز الروم والتجميع
