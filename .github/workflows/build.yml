@@ -35,22 +35,18 @@ jobs:
         
         mkdir -p android && cd android
         
-        # تهيئة سورس Infinity-X لأندرويد 16
+        # تهيئة ومزامنة السورس
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
-        
-        # مزامنة السورس بالكامل (بما يشمل أدوات build و soong الصحيحة المتوافقة مع الروم)
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب مستودعات هاتف Samsung A04 في مساراتها الشجرية الصحيحة
+        # جلب الأشجار داخل مجلد الأندرويد
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # تفعيل بيئة بناء الأندرويد الرسمية
+        # تفعيل بيئة البناء والـ Lunch
         source build/envsetup.sh
         
-        # اختيار هدف البناء للروم (قد تحتاج لتعديل اللاحقة ap2a بناءً على ما هو معرف داخل المستودع)
         lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
 
-        # بدء عملية التجميع الفعلي للروم
         mka bacon -j$(nproc --all)
