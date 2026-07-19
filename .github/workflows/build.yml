@@ -35,10 +35,10 @@ jobs:
         
         mkdir -p android && cd android
         
-        # إعادة فلاتر المساحة القوية لمنع امتلاء الهارد
+        # فلاتر المساحة القوية للحفاظ على القرص
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
-        # إزالة الحزم المتسببة بامتلاء الذاكرة
+        # إزالة الحزم الضخمة المتسببة بامتلاء الذاكرة
         if [ -f .repo/manifests/default.xml ]; then
           sed -i '/platform\/prebuilts\/clang\/host\/linux-x86/d' .repo/manifests/default.xml
           sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
@@ -47,7 +47,15 @@ jobs:
         # المزامنة الخفيفة السريعة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # حل مشكلة المسار الداخلي: ربط مجلد vendor/infinity بمجلد vendor/lineage ليتوافق مع سكربت البناء تلقائياً
+        # بناء هيكلية المجلدات المطلوبة وسحب الملف الناقص فقط من سورس أندرويد 16 الرسمي
+        mkdir -p build/soong/scripts
+        curl -sL https://github.com/LineageOS/android_build_soong/raw/lineage-22.1/scripts/get_clang_version.py -o build/soong/scripts/get_clang_version.py
+        chmod +x build/soong/scripts/get_clang_version.py
+
+        # الخدعة الحاسمة: ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
+        sudo ln -s $(pwd)/build /build
+
+        # حل مشكلة تداخل مسارات البناء الأخرى عبر روابط رمزية
         if [ -d "vendor/infinity" ]; then
           mkdir -p vendor/lineage
           ln -s ../infinity/build vendor/lineage/build 2>/dev/null || true
@@ -61,15 +69,8 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # البحث عن سكربت البيئة الأصلي التابع للروم وتفعيله
-        REAL_ENV=$(find . -name "envsetup.sh" | grep -E "infinity|lineage" | grep -v "cts" | head -n 1)
-        if [ -z "$REAL_ENV" ]; then
-          # إذا لم يجد شيئاً، نستخدم السكربت المتواجد في مجلد البيئة الفرعي للروم
-          REAL_ENV="lineage/build/envsetup.sh"
-        fi
-        
-        echo "تفعيل بيئة الروم من المسار المعتمد: $REAL_ENV"
-        . $REAL_ENV
+        # تفعيل بيئة الروم المعتمدة
+        . vendor/infinity/build/envsetup.sh
         
         # بدء تجميع الروم
         lunch infinity_a04-userdebug
