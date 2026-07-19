@@ -39,9 +39,9 @@ jobs:
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # 2. حل مشكلة الملفات المفقودة عبر جلب نظام بناء أندرويد 16 يدوياً
+        # 2. جلب نظام بناء أندرويد 16 بالرابط الرسمي الصحيح وتظبيط مساراته
         rm -rf build
-        git clone https://android.googlesource.com/platform/build/make -b android-16.0.0_r1 build --depth=1
+        git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1
 
         # 3. جلب أشجار هاتف Samsung A04 والـ Vendor والـ Kernel
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
@@ -49,8 +49,8 @@ jobs:
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
         # 4. تفعيل البيئة الآن
-        chmod +x build/envsetup.sh
-        source build/envsetup.sh
+        chmod +x build/make/envsetup.sh
+        source build/make/envsetup.sh
         
         # 5. اختيار هدف البناء وتجميع الروم
         lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
