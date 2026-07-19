@@ -39,7 +39,7 @@ jobs:
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # 2. جلب نظام بناء أندرويد 16 بالكامل في مساره الشجري الطبيعي
+        # 2. جلب نظام بناء أندرويد 16 بالكامل
         rm -rf build
         git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1
 
@@ -48,11 +48,13 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # 4. إصلاح التوجيه الداخلي لسكريبتات أندرويد 16
+        # 4. إصلاح وتصدير مسارات البيئة بشكل صحيح لتفادي أخطاء المجلدات الفرعية
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
         
-        source build/make/envsetup.sh
+        # استدعاء الملف من مساره الحقيقي المباشر داخل مجلد build
+        chmod +x build/envsetup.sh
+        source build/envsetup.sh
         
         # 5. اختيار هدف البناء وتجميع الروم
         lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
