@@ -35,36 +35,32 @@ jobs:
         
         mkdir -p android && cd android
         
-        # إلغاء الفلاتر التي تسببت بحذف مجلد البناء الأساسي (build/)
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs
+        # إعادة فلاتر المساحة القوية لمنع امتلاء الهارد
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
-        # إزالة الحزم الضخمة غير الضرورية من المانيفست للحفاظ على المساحة
+        # إزالة الحزم المتسببة بامتلاء الذاكرة
         if [ -f .repo/manifests/default.xml ]; then
           sed -i '/platform\/prebuilts\/clang\/host\/linux-x86/d' .repo/manifests/default.xml
           sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
         fi
         
-        # المزامنة الكاملة والمستقرة
+        # المزامنة الخفيفة السريعة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب الـ clang يدوياً بعمق 1
+        # جلب مجلد الـ build الأساسي المفقود بشكل منفصل وخفيف (Depth 1) لحل المشكلة السابقة
+        git clone https://github.com/LineageOS/android_build.git -b lineage-22.1 build/make --depth=1
+        mkdir -p build/core && ln -s ../make/core/envsetup.mk build/core/envsetup.mk 2>/dev/null || true
+
+        # جلب الـ clang يدوياً وبعمق 1 لضمان استقرار المساحة
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
-        # جلب أشجار ملفات السامسونج A04
+        # جلب أشجار ملفات جهازك السامسونج A04
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تفعيل البيئة بعد التأكد من تحميل مجلد build/make/ بنجاح
-        if [ -f "build/make/envsetup.sh" ]; then
-          . build/make/envsetup.sh
-        elif [ -f "build/envsetup.sh" ]; then
-          . build/envsetup.sh
-        else
-          echo "بحث شامل عن السكربت في حال تغير مساره الافتراضي:"
-          FOUND_SCRIPT=$(find . -name "envsetup.sh" | grep -v "cts" | head -n 1)
-          . $FOUND_SCRIPT
-        fi
+        # تفعيل البيئة من المجلد المستورد والمضمون
+        . build/make/envsetup.sh
         
         # بدء تجميع الروم
         lunch infinity_a04-userdebug
