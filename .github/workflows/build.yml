@@ -47,12 +47,21 @@ jobs:
         # المزامنة الخفيفة السريعة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # بناء هيكلية المجلدات المطلوبة وسحب الملف الناقص فقط من سورس أندرويد 16 الرسمي
+        # بناء هيكلية المجلدات المطلوبة لـ Soong وجلب الملفات الأساسية
         mkdir -p build/soong/scripts
+        mkdir -p build/soong/cc/config
+        
         curl -sL https://github.com/LineageOS/android_build_soong/raw/lineage-22.1/scripts/get_clang_version.py -o build/soong/scripts/get_clang_version.py
         chmod +x build/soong/scripts/get_clang_version.py
 
-        # الخدعة الحاسمة: ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
+        # إنشاء ملف global.go الوهمي بالمحتوى المتوقع لمنع خطأ الـ Python
+        cat << 'EOF' > build/soong/cc/config/global.go
+        package config
+        // ClangDefaultVersion المتوقع من السكربت لقراءته
+        const ClangDefaultVersion = "clang-r584948b"
+EOF
+
+        # ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
         sudo ln -s $(pwd)/build /build
 
         # حل مشكلة تداخل مسارات البناء الأخرى عبر روابط رمزية
