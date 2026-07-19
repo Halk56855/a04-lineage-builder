@@ -35,7 +35,6 @@ jobs:
         
         mkdir -p android && cd android
         
-        # تفعيل المزامنة الأساسية الخفيفة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
         if [ -f .repo/manifests/default.xml ]; then
@@ -45,25 +44,29 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # بناء المجلدات الهيكلية الأساسية لنظام البناء
+        # إنشاء الهيكل الكامل للمجلدات الفرعية المطلوبة لنظام بناء أندرويد
         mkdir -p build/core
         mkdir -p build/make/core
         
-        # حقن ملف envsetup.sh الأساسي والرسمي مباشرة عبر curl لضمان تفعيل دالة lunch
+        # جلب ملف envsetup.sh الرئيسي
         curl -sL https://github.com/LineageOS/android_build/raw/lineage-22.1/envsetup.sh -o build/envsetup.sh
         chmod +x build/envsetup.sh
 
-        # تزييف ملفات التحقق لكي يعبر السكربت بدون أخطاء شجرة الملفات
+        # جلب الملف المساعد المفقود shell_utils.sh الذي تسبب في الخطأ الأخير
+        curl -sL https://github.com/LineageOS/android_build_make/raw/lineage-22.1/shell_utils.sh -o build/make/shell_utils.sh
+        chmod +x build/make/shell_utils.sh
+
+        # تزييف بقية ملفات التحقق لضمان توافق بيئة العمل
         touch Makefile
         touch build/core/main.mk
         touch build/make/core/envsetup.mk
         echo "include build/make/core/envsetup.mk" > build/core/config.mk
 
-        # جلب مستودع Soong العام لحل أزمة سكربت البايثون الداخلي
+        # جلب مستودع Soong لحل أزمة سكربتات البايثون
         rm -rf build/soong
         git clone https://github.com/LineageOS/android_build_soong.git -b lineage-22.1 build/soong --depth=1
 
-        # ربط المجلد المطلق بالنظام لتفادي مشاكل المسارات الصارمة لسكربت البايثون
+        # ربط المسارات المطلقة لتفادي مشاكل التحقق
         sudo rm -f /build
         sudo ln -s $(pwd)/build /build
 
@@ -72,19 +75,19 @@ jobs:
           ln -s ../infinity/build vendor/lineage/build 2>/dev/null || true
         fi
 
-        # سحب الملفات المتبقية وأشجار جهازك السامسونج A04
+        # سحب بقية مستودعات وأشجار جهازك سامسونج A04
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # إجبار البيئة على اعتماد المجلد الحالي كأعلى الشجرة
+        # تصدير المسار الجذري بشكل صارم
         export ANDROID_BUILD_TOP=$(pwd)
         
-        # استدعاء ملف تفعيل البيئة الرسمي الذي قمنا بحقنه
+        # استدعاء ملف تفعيل البيئة بعد إمداده بالاعتماديات المطلوبة
         . build/envsetup.sh
         
-        # تشغيل التجميع الفعلي لسامسونج
+        # الانتقال لتجهيز الروم والتجميع
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
