@@ -23,7 +23,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    - name: Setup Repo Tool & Run Smart Build
+    - name: Setup Repo Tool & Build Infinity-X
       run: |
         mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
@@ -35,39 +35,22 @@ jobs:
         
         mkdir -p android && cd android
         
+        # تهيئة سورس Infinity-X لأندرويد 16
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
-
-        if [ -f .repo/manifests/default.xml ]; then
-          sed -i '/platform\/prebuilts\/clang\/host\/linux-x86/d' .repo/manifests/default.xml
-          sed -i '/platform\/prebuilts\/gcc\/linux-x86/d' .repo/manifests/default.xml
-        fi
         
+        # مزامنة السورس بالكامل (بما يشمل أدوات build و soong الصحيحة المتوافقة مع الروم)
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب مستودعات البناء الأساسية لأندرويد 16 بعمق 1
-        rm -rf build
-        git clone https://android.googlesource.com/platform/build -b android-16.0.0_r1 build --depth=1
-        
-        rm -rf build/soong
-        git clone https://android.googlesource.com/platform/build/soong -b android-16.0.0_r1 build/soong --depth=1
-
-        # جلب أشجار جهازك سامسونج A04 والـ Clang
-        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
+        # جلب مستودعات هاتف Samsung A04 في مساراتها الشجرية الصحيحة
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # تهيئة مسارات وهمية سريعة لإقناع الأدوات الفرعية بوجود هيكل شجرة مستقل
-        mkdir -p build/make/core
-        touch build/make/core/envsetup.mk
-        touch Makefile
+        # تفعيل بيئة بناء الأندرويد الرسمية
+        source build/envsetup.sh
+        
+        # اختيار هدف البناء للروم (قد تحتاج لتعديل اللاحقة ap2a بناءً على ما هو معرف داخل المستودع)
+        lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
 
-        # تصدير البيئة يدوياً بشكل صارم وكامل
-        export ANDROID_BUILD_TOP=$(pwd)
-        export TOP=$(pwd)
-        export TARGET_PRODUCT=infinity_a04
-        export TARGET_BUILD_VARIANT=userdebug
-
-        # استدعاء أداة البناء Soong مباشرة لتجاوز خطأ تعذر تحديد شجرة الملفات (Top of the tree)
-        chmod +x build/soong/soong_ui.bash
-        ./build/soong/soong_ui.bash --make-mode bacon -j$(nproc --all)
+        # بدء عملية التجميع الفعلي للروم
+        mka bacon -j$(nproc --all)
