@@ -47,9 +47,11 @@ jobs:
         # المزامنة الخفيفة السريعة
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب مجلد الـ build الأساسي المفقود بشكل منفصل وخفيف (Depth 1) لحل المشكلة السابقة
-        git clone https://github.com/LineageOS/android_build.git -b lineage-22.1 build/make --depth=1
-        mkdir -p build/core && ln -s ../make/core/envsetup.mk build/core/envsetup.mk 2>/dev/null || true
+        # حل مشكلة المسار الداخلي: ربط مجلد vendor/infinity بمجلد vendor/lineage ليتوافق مع سكربت البناء تلقائياً
+        if [ -d "vendor/infinity" ]; then
+          mkdir -p vendor/lineage
+          ln -s ../infinity/build vendor/lineage/build 2>/dev/null || true
+        fi
 
         # جلب الـ clang يدوياً وبعمق 1 لضمان استقرار المساحة
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
@@ -59,8 +61,15 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تفعيل البيئة من المجلد المستورد والمضمون
-        . build/make/envsetup.sh
+        # البحث عن سكربت البيئة الأصلي التابع للروم وتفعيله
+        REAL_ENV=$(find . -name "envsetup.sh" | grep -E "infinity|lineage" | grep -v "cts" | head -n 1)
+        if [ -z "$REAL_ENV" ]; then
+          # إذا لم يجد شيئاً، نستخدم السكربت المتواجد في مجلد البيئة الفرعي للروم
+          REAL_ENV="lineage/build/envsetup.sh"
+        fi
+        
+        echo "تفعيل بيئة الروم من المسار المعتمد: $REAL_ENV"
+        . $REAL_ENV
         
         # بدء تجميع الروم
         lunch infinity_a04-userdebug
