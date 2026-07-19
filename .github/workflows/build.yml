@@ -35,6 +35,7 @@ jobs:
         
         mkdir -p android && cd android
         
+        # فلاتر مساحة صارمة لمنع امتلاء القرص
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
         if [ -f .repo/manifests/default.xml ]; then
@@ -44,9 +45,9 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب مستودع build_soong بالكامل بعمق 1 لضمان وجود كافة ملفات الـ config الرسمية والصحيحة
-        rm -rf build/soong
-        git clone https://github.com/LineageOS/android_build_soong.git -b lineage-22.1 build/soong --depth=1
+        # جلب مجلد build بالكامل بفلترة ذكية جداً للمساحة لضمان تسجيل أمر lunch
+        rm -rf build
+        git clone https://github.com/LineageOS/android_build.git -b lineage-22.1 build --depth=1 --filter=blob:none
 
         # ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
         sudo rm -f /build
@@ -63,7 +64,8 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        . vendor/infinity/build/envsetup.sh
+        # تفعيل البيئة بشكل صحيح ومباشر من السورس المستورد بالكامل
+        . build/envsetup.sh
         
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
