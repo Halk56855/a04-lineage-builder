@@ -35,6 +35,7 @@ jobs:
         
         mkdir -p android && cd android
         
+        # تفعيل المزامنة الأساسية
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
         if [ -f .repo/manifests/default.xml ]; then
@@ -44,18 +45,25 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب مجلد build بالكامل بفلترة مساحة ذكية
-        rm -rf build
-        git clone https://github.com/LineageOS/android_build.git -b lineage-22.1 build --depth=1 --filter=blob:none
+        # بدلاً من جلب مستودع خارجي يسبب خطأ المصادقة، ننسخ هيكل البناء الداخلي للروم
+        if [ -d "vendor/infinity/build" ]; then
+          mkdir -p build/soong/scripts
+          mkdir -p build/soong/cc/config
+          mkdir -p build/make/core
+          cp -r vendor/infinity/build/* build/ 2>/dev/null || true
+        fi
 
-        # جلب مجلد build/make المفقود المسؤول عن تحديد الـ Top tree والملفات الهيكلية
-        git clone https://github.com/LineageOS/android_build_make.git -b lineage-22.1 build/make --depth=1 --filter=blob:none
+        # جلب مستودع Soong العام المفتوح لحل أزمة السكربتات المفقودة
+        rm -rf build/soong
+        git clone https://github.com/LineageOS/android_build_soong.git -b lineage-22.1 build/soong --depth=1
 
-        # إنشاء ملف Makefile وهمي في الجذر لإقناع السكربت أنه في جذر الشجرة
+        # خلق بيئة وهمية متكاملة تخدع ملف envsetup لإقناعه بوجود شجرة كاملة
         touch Makefile
         touch build/core/main.mk
+        touch build/make/core/envsetup.mk
+        echo "include build/make/core/envsetup.mk" > build/core/config.mk 2>/dev/null || true
 
-        # ربط المجلدات المطلقة بجذر النظام
+        # ربط المجلد المطلق بالنظام لتفادي مشاكل المسارات الصارمة
         sudo rm -f /build
         sudo ln -s $(pwd)/build /build
 
@@ -64,16 +72,18 @@ jobs:
           ln -s ../infinity/build vendor/lineage/build 2>/dev/null || true
         fi
 
+        # سحب الملفات المتبقية التي لا تحتاج لمصادقة
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts/clang/host/linux-x86 --depth=1
         
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تصدير مسار الجذر الحالي يدوياً لإجبار envsetup على العمل
+        # إجبار البيئة على اعتماد المجلد الحالي كأعلى الشجرة
         export ANDROID_BUILD_TOP=$(pwd)
         
-        . build/envsetup.sh
+        # تشغيل ملف البيئة المضمون محلياً
+        . vendor/infinity/build/envsetup.sh
         
         lunch infinity_a04-userdebug
         mka bacon -j$(nproc --all)
