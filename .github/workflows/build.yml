@@ -1,63 +1,73 @@
-name: Build Infinity-X / LineageOS for A04
+name: Android 16 Precision Sync & Build
 
 on:
-  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً من موقع جيت هاب
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    # 1. جلب المستودع الحالي
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 2. تفريغ مساحة السيرفر تلقائياً (حذف الحزم الكبيرة غير المستخدمة)
-    - name: Free Disk Space (Automatic)
-      uses: jlumbroso/free-disk-space@v1.3.1
-      with:
-        tool-cache: true
-        android: false # نتركه false للحفاظ على أدوات الـ SDK الأساسية للنظام
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
-
-    # 3. تنظيف إضافي وعميق للمساحة عبر الـ Terminal
-    - name: Deep Clean Disk Space (Manual)
+    - name: Install Build Dependencies
       run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf "/usr/local/share/boost"
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-        df -h # يعرض لك المساحة المتاحة بعد التنظيف في الـ Logs
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    # 4. إعداد أداة الـ Repo وتحميل السورس بأقل مساحة ممكنة
+    - name: Maximize Build Disk Space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 2048
+        swap-size-mb: 1024
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
+
     - name: Setup Repo Tool & Build Infinity-X
       run: |
-        # إعداد مجلد الأدوات وتثبيت الـ Repo
         mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
-        export PATH=~/bin:$PATH
+        export PATH="$HOME/bin:$PATH"
+        
+        git config --global user.email "cloud-build@infinity.org"
+        git config --global user.name "CloudBuilder"
+        git config --global lfs.fetchexclude "*"
+        
+        mkdir -p android && cd android
+        
+        # تهيئة الشجرة الأصلية
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --partial-clone --clone-filter=blob:none
+        
+        # المزامنة الذكية تلافياً لامتلاء المساحة
+        repo sync -c -j2 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # إعدادات Git المطلوبة
-        git config --global user.name "Halk56855"
-        git config --global user.email "halk@example.com"
+        # جلب أشجار هاتف Samsung A04 والـ Vendor والـ Kernel
+        git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
+        git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
+        git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # إنشاء مجلد العمل والانتقال إليه
-        mkdir -p android
-        cd android
+        # تأكيد بيئة الشجرة
+        touch Makefile
+        export ANDROID_BUILD_TOP=$(pwd)
+        export TOP=$(pwd)
+        
+        # تفعيل البيئة الأصلية من السورس
+        chmod +x build/envsetup.sh
+        source build/envsetup.sh
+        
+        # اختيار هدف البناء وبدء التجميع
+        lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
 
-        # أمر الـ Init المخفف (يجلب آخر تحديث فقط بدون تاريخ التعديلات القديم)
-        # ملاحظة: قم بتغيير رابط السورس (-u) واسم الفرع (-b) إذا كنت تستخدم روم آخر
-        repo init -u https://github.com/LineageOS/android.git -b lineage-21.0 --depth=1 --git-lfs
+        mka bacon -j$(nproc --all)
 
-        # أمر الـ Sync الذكي والموفر للمساحة
-        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --prune
-
-        # وضع أوامر بناء الروم الخاصة بك هنا بعد الـ Sync (مثال):
-        # source build/envsetup.sh
-        # lunch lineage_a04-userdebug
-        # mka bacon
+    # 🌟 الخطوة الجديدة: رفع ملف الروم الناتج تلقائياً لصفحة جيت هاب
+    - name: Upload ROM Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Infinity-X-ROM-A04
+        path: android/out/target/product/a04/*.zip
+        retention-days: 7
