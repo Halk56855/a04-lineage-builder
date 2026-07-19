@@ -10,13 +10,16 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Extreme Root Disk Cleaning
-      run: |
-        sudo systemctl stop docker || true
-        sudo rm -rf /var/lib/docker /etc/docker
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/powershell /share/swift /opt/pipx /usr/local/.ghcup /opt/az /usr/local/share/chromium /usr/local/lib/node_modules
-        sudo apt-get clean
-        sudo rm -rf /var/lib/apt/lists/*
+    - name: Maximize Build Disk Space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 2048
+        swap-size-mb: 1024
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
 
     - name: Install Build Dependencies
       run: |
@@ -30,18 +33,17 @@ jobs:
         chmod a+x ~/bin/repo
         export PATH="$HOME/bin:$PATH"
         
-        # إعدادات الـ git وتعطيل الفحص الصارم لملفات LFS أثناء المزامنة الشجرية
         git config --global user.email "cloud-build@infinity.org"
         git config --global user.name "CloudBuilder"
-        git config --global lfs.fetchexclude "*"
         
+        # إنشاء المجلد في المساحة الكبيرة المخصصة والممتدة
         mkdir -p android && cd android
         
-        # 1. تهيئة السورس الأساسي عمق 1
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1
+        # 1. تهيئة السورس مع استخدام خيار خفيف ومستقر جداً للمساحة والتخزين
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --partial-clone --clone-filter=blob:none
         
-        # 2. المزامنة باستخدام الخيارات الرسمية الصحيحة فقط
-        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
+        # 2. المزامنة مع تحجيم عدد خطوط الاتصال لتفادي الاختناق وانهيار المستودعات الثقيلة
+        repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch
 
         # 3. جلب أشجار هاتف Samsung A04 والـ Vendor والـ Kernel
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
