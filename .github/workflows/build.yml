@@ -35,7 +35,6 @@ jobs:
         
         mkdir -p android && cd android
         
-        # فلاتر مساحة صارمة لمنع امتلاء القرص
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --git-lfs -g default,-notdefault,-darwin,-pdk,-arm,-mips,-x86
 
         if [ -f .repo/manifests/default.xml ]; then
@@ -45,11 +44,18 @@ jobs:
         
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب مجلد build بالكامل بفلترة ذكية جداً للمساحة لضمان تسجيل أمر lunch
+        # جلب مجلد build بالكامل بفلترة مساحة ذكية
         rm -rf build
         git clone https://github.com/LineageOS/android_build.git -b lineage-22.1 build --depth=1 --filter=blob:none
 
-        # ربط مجلد البناء المحلي بجذر النظام لإرضاء مسارات السكربت المطلقة (/build)
+        # جلب مجلد build/make المفقود المسؤول عن تحديد الـ Top tree والملفات الهيكلية
+        git clone https://github.com/LineageOS/android_build_make.git -b lineage-22.1 build/make --depth=1 --filter=blob:none
+
+        # إنشاء ملف Makefile وهمي في الجذر لإقناع السكربت أنه في جذر الشجرة
+        touch Makefile
+        touch build/core/main.mk
+
+        # ربط المجلدات المطلقة بجذر النظام
         sudo rm -f /build
         sudo ln -s $(pwd)/build /build
 
@@ -64,7 +70,9 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
         
-        # تفعيل البيئة بشكل صحيح ومباشر من السورس المستورد بالكامل
+        # تصدير مسار الجذر الحالي يدوياً لإجبار envsetup على العمل
+        export ANDROID_BUILD_TOP=$(pwd)
+        
         . build/envsetup.sh
         
         lunch infinity_a04-userdebug
