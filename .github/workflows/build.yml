@@ -10,11 +10,18 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 1. تفريغ أقصى مساحة ممكنة وتوسيع القرص
+    # 1. تثبيت أدوات البناء أولاً قبل تقليص مساحة قسم النظام الرئيسي
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
+        sudo apt-get clean
+
+    # 2. توسيع مساحة القرص وتخصيصها بالكامل لمجلد /mnt
     - name: Maximize Build Disk Space
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 1024
+        root-reserve-mb: 2048
         swap-size-mb: 1024
         build-mount-path: '/mnt'
         remove-dotnet: 'true'
@@ -23,16 +30,10 @@ jobs:
         remove-codeql: 'true'
         remove-docker-images: 'true'
 
-    # 2. تثبيت التبعيات
-    - name: Install Build Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
-
     # 3. المزامنة الذكية والتجميع داخل القرص الموسّع (/mnt)
     - name: Setup Repo Tool & Build Infinity-X
       run: |
-        # إنشاء مسار العمل والملفات المؤقتة داخل القرص الموسع /mnt
+        # إنشاء مسار العمل داخل القرص الموسع /mnt
         sudo mkdir -p /mnt/android /mnt/tmp
         sudo chown -R $USER:$USER /mnt/android /mnt/tmp
         export TMPDIR=/mnt/tmp
@@ -48,13 +49,13 @@ jobs:
         
         cd /mnt/android
         
-        # أ) تهيئة السورس مع استبعاد مشاريع الأجهزة والمنصات غير المطلوبة
+        # أ) تهيئة السورس مع استبعاد المشاريع غير المطلوبة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none -g default,-device,-mips,-x86
         
-        # ب) مزامنة الشجرة بدون نسخ إضافية
+        # ب) مزامنة الشجرة
         repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # ج) تفريغ مجلد .repo فوراً لتوفير مساحة البناء
+        # ج) تفريغ مجلد .repo فوراً لتوفير مساحة للبناء
         echo "=== Freeing space by removing .repo folder ==="
         rm -rf .repo
         df -h
@@ -64,7 +65,7 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # هـ) تهيئة البيئة وتفعيل التجميع
+        # هـ) تهيئة البيئة وتجميع الروم
         touch Makefile
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
