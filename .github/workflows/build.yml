@@ -10,28 +10,33 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 1. ربط المساحة الممتدة (120GB+) مباشرة بمجلد العمل لتفادي امتلاء القرص
+    # 1. تفريغ أقصى مساحة ممكنة وتوسيع القرص
     - name: Maximize Build Disk Space
       uses: easimon/maximize-build-space@master
       with:
         root-reserve-mb: 1024
         swap-size-mb: 1024
-        build-mount-path: '/home/runner/work'
+        build-mount-path: '/mnt'
         remove-dotnet: 'true'
         remove-android: 'true'
         remove-haskell: 'true'
         remove-codeql: 'true'
         remove-docker-images: 'true'
 
-    # 2. تثبيت الحزم والأدوات المطلوبة للبناء
+    # 2. تثبيت التبعيات
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    # 3. المزامنة والبناء داخل القرص الموسّع
+    # 3. المزامنة الذكية والتجميع داخل القرص الموسّع (/mnt)
     - name: Setup Repo Tool & Build Infinity-X
       run: |
+        # إنشاء مسار العمل والملفات المؤقتة داخل القرص الموسع /mnt
+        sudo mkdir -p /mnt/android /mnt/tmp
+        sudo chown -R $USER:$USER /mnt/android /mnt/tmp
+        export TMPDIR=/mnt/tmp
+        
         mkdir -p ~/bin
         curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
         chmod a+x ~/bin/repo
@@ -41,15 +46,15 @@ jobs:
         git config --global user.name "CloudBuilder"
         git config --global lfs.fetchexclude "*"
         
-        mkdir -p android && cd android
+        cd /mnt/android
         
-        # أ) تهيئة الشجرة القياسية المكتملة
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify
+        # أ) تهيئة السورس مع استبعاد مشاريع الأجهزة والمنصات غير المطلوبة
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none -g default,-device,-mips,-x86
         
-        # ب) المزامنة الذكية بدون نسخ حزم مضاعفة
+        # ب) مزامنة الشجرة بدون نسخ إضافية
         repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # ج) تفريغ مجلد .repo لتحرير أكثر من 40GB إضافية قبل بدء التجميع
+        # ج) تفريغ مجلد .repo فوراً لتوفير مساحة البناء
         echo "=== Freeing space by removing .repo folder ==="
         rm -rf .repo
         df -h
@@ -59,7 +64,7 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # هـ) تهيئة البيئة وتفعيل الملفات
+        # هـ) تهيئة البيئة وتفعيل التجميع
         touch Makefile
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
@@ -67,15 +72,14 @@ jobs:
         chmod +x build/envsetup.sh
         source build/envsetup.sh
         
-        # و) اختيار الهدف وبدء التجميع
         lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
 
         mka bacon -j$(nproc --all)
 
-    # 4. رفع ملف الروم الناتج تلقائياً
+    # 4. رفع ملف الروم الناتج
     - name: Upload ROM Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Infinity-X-ROM-A04
-        path: android/out/target/product/a04/*.zip
+        path: /mnt/android/out/target/product/a04/*.zip
         retention-days: 7
