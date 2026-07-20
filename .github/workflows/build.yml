@@ -10,12 +10,13 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 1. تفريغ مساحة القرص بأمان وبشكل مضمون (توفير أكثر من 80GB)
+    # 1. ربط المساحة الممتدة (120GB+) مباشرة بمجلد العمل لتفادي امتلاء القرص
     - name: Maximize Build Disk Space
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 2048
+        root-reserve-mb: 1024
         swap-size-mb: 1024
+        build-mount-path: '/home/runner/work'
         remove-dotnet: 'true'
         remove-android: 'true'
         remove-haskell: 'true'
@@ -28,7 +29,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    # 3. المزامنة الموثوقة والبناء
+    # 3. المزامنة والبناء داخل القرص الموسّع
     - name: Setup Repo Tool & Build Infinity-X
       run: |
         mkdir -p ~/bin
@@ -42,13 +43,13 @@ jobs:
         
         mkdir -p android && cd android
         
-        # أ) تهيئة الشجرة القياسية المكتملة بدون استبعاد للمجلدات الهيكلية
+        # أ) تهيئة الشجرة القياسية المكتملة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify
         
-        # ب) المزامنة
+        # ب) المزامنة الذكية بدون نسخ حزم مضاعفة
         repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # ج) تفريغ مجلد .repo لتحرير أكثر من 40GB فوراً قبل بدء البناء
+        # ج) تفريغ مجلد .repo لتحرير أكثر من 40GB إضافية قبل بدء التجميع
         echo "=== Freeing space by removing .repo folder ==="
         rm -rf .repo
         df -h
@@ -58,7 +59,7 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # هـ) تهيئة بيئة أندرويد وتفعيل الملفات
+        # هـ) تهيئة البيئة وتفعيل الملفات
         touch Makefile
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
@@ -71,7 +72,7 @@ jobs:
 
         mka bacon -j$(nproc --all)
 
-    # 4. رفع ملف الروم ZIP المكتمل إلى صفحة الـ Actions
+    # 4. رفع ملف الروم الناتج تلقائياً
     - name: Upload ROM Artifact
       uses: actions/upload-artifact@v4
       with:
