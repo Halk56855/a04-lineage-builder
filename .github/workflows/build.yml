@@ -10,25 +10,26 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 1. تنظيف عميق لقرص الحاوية وتوفير المساحة
-    - name: Maximize Disk Space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        sudo rm -rf /usr/local/share/boost
-        sudo docker image prune --all --force
-        sudo apt-get clean
-        df -h
+    # 1. إعطاء أقصى مساحة ممكنة (140GB+) ودعم مسار العمل الأساسي
+    - name: Maximize Build Disk Space
+      uses: easimon/maximize-build-space@master
+      with:
+        root-reserve-mb: 1024
+        swap-size-mb: 1024
+        build-mount-path: '/home/runner/work'
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
 
-    # 2. تثبيت الحزم والأدوات اللازمة للبناء
+    # 2. تثبيت تبعيات البناء
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    # 3. المزامنة والتفريغ والبناء
+    # 3. المزامنة والبناء
     - name: Setup Repo Tool & Build Infinity-X
       run: |
         mkdir -p ~/bin
@@ -42,13 +43,13 @@ jobs:
         
         mkdir -p android && cd android
         
-        # أ) تصحيح خيارات repo init الرسمية للتنزيل الجزئي
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none
+        # أ) تهيئة الشجرة بفلترة الأجزاء غير الموجهة للمعالج (توفير مساحة ضخمة)
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify -g default,-pdk,-vts,-emulator
         
-        # ب) مزامنة السورس
+        # ب) المزامنة
         repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # ج) حذف مجلد .repo فوراً لتفريغ أكثر من 40GB
+        # ج) حذف مجلد .repo لتفريغ أكثر من 40GB إضافية فوراً
         echo "=== Freeing space by removing .repo folder ==="
         rm -rf .repo
         df -h
@@ -58,7 +59,7 @@ jobs:
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # هـ) إعداد بيئة البناء
+        # هـ) تهيئة البيئة والبناء
         touch Makefile
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
@@ -66,12 +67,11 @@ jobs:
         chmod +x build/envsetup.sh
         source build/envsetup.sh
         
-        # و) اختيار الهدف وتجميع الروم
         lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
 
         mka bacon -j$(nproc --all)
 
-    # 4. رفع ملف الروم الناتج تلقائياً
+    # 4. رفع الملف الناتج تلقائياً
     - name: Upload ROM Artifact
       uses: actions/upload-artifact@v4
       with:
