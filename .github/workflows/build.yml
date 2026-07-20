@@ -10,7 +10,7 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 1. تنظيف شامل وكامل للقرص الرئيسي قبل التوسعة
+    # 1. تنظيف أولي سريع
     - name: Free Disk Space
       run: |
         sudo rm -rf /usr/share/dotnet
@@ -28,12 +28,12 @@ jobs:
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
         sudo apt-get clean
 
-    # 3. توسيع المساحة بدون تخصيص Swap لتوفير أكبر مساحة ممكنة للقرص
+    # 3. توسيع مساحة القرص (تم تصحيح قيم swap و reserve لتفادي الخطأ)
     - name: Maximize Build Disk Space
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 512
-        swap-size-mb: 0
+        root-reserve-mb: 1024
+        swap-size-mb: 512
         build-mount-path: '/mnt'
         remove-dotnet: 'true'
         remove-android: 'true'
@@ -41,7 +41,7 @@ jobs:
         remove-codeql: 'true'
         remove-docker-images: 'true'
 
-    # 4. المزامنة المبتكرة والتجميع
+    # 4. المزامنة المبتكرة والتجميع داخل القرص الموسّع (/mnt)
     - name: Setup Repo Tool & Build Infinity-X
       run: |
         sudo mkdir -p /mnt/android /mnt/tmp
@@ -59,13 +59,13 @@ jobs:
         
         cd /mnt/android
         
-        # أ) تهيئة السورس مع تقييد المجموعات للحد الأدنى البناء
+        # أ) تهيئة السورس مع استبعاد المشاريع غير المطلوبة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none -g default,-mips,-x86,-darwin,-notdefault
         
-        # ب) المزامنة في خيط واحد متزن لتفادي استهلاك المساحة المفاجئ
+        # ب) المزامنة
         repo sync -c -j2 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # ج) تفريغ مجلد .repo فوراً لتوفير مساحة للبناء
+        # ج) تفريغ مجلد .repo فوراً لتوفير المساحة
         echo "=== Freeing space by removing .repo folder ==="
         rm -rf .repo
         df -h
