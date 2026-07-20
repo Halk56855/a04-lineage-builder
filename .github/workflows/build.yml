@@ -21,7 +21,7 @@ jobs:
         sudo docker image prune --all --force
         sudo apt-get clean
 
-    # 2. تثبيت التبعيات
+    # 2. تثبيت الحزم المطلوبة
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
@@ -41,7 +41,7 @@ jobs:
         remove-codeql: 'true'
         remove-docker-images: 'true'
 
-    # 4. المزامنة الذكية مع إعادة المحاولة التلقائية عند أخطاء 502
+    # 4. المزامنة والتجميع عبر سكريبت محمي
     - name: Setup Repo Tool & Build Infinity-X
       run: |
         sudo mkdir -p /mnt/android /mnt/tmp
@@ -59,35 +59,31 @@ jobs:
         
         cd /mnt/android
         
-        # أ) تهيئة السورس
+        # أ) تهيئة السورس والمزامنة
         repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none -g default,-mips,-x86,-darwin,-notdefault
-        
-        # ب) المزامنة مع آلية التكرار عند فشل الاتصال بخوادم Gitea
-        echo "=== Starting Sync with Auto-Retry ==="
-        repo sync -c -j2 --force-sync --no-clone-bundle --no-tags --current-branch --retry-fetches=5 || \
-        (sleep 30 && repo sync -c -j1 --force-sync --no-clone-bundle --no-tags --current-branch --retry-fetches=10)
+        repo sync -c -j2 --force-sync --no-clone-bundle --no-tags --current-branch --retry-fetches=5
 
-        # ج) تفريغ مجلد .repo فوراً لتوفير المساحة
+        # ب) تفريغ مجلد .repo لتوفير المساحة
         echo "=== Freeing space by removing .repo folder ==="
         rm -rf .repo
         df -h
 
-        # د) جلب أشجار هاتف Samsung A04 والـ Vendor والـ Kernel
+        # ج) تنظيف المجلدات المستهدفة إن وجدت ثم جلب الأشجار
+        rm -rf device/samsung/a04 vendor/samsung/a04 kernel/samsung/a04
+        
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # هـ) تهيئة البيئة والتجميع
-        touch Makefile
-        export ANDROID_BUILD_TOP=$(pwd)
-        export TOP=$(pwd)
-        
-        chmod +x build/envsetup.sh
-        source build/envsetup.sh
-        
-        lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
-
-        mka bacon -j$(nproc --all)
+        # د) التجميع داخل بيئة منفصلة لمنع الخروج المبكر
+        bash -c '
+          set -x
+          export ANDROID_BUILD_TOP=$(pwd)
+          export TOP=$(pwd)
+          source build/envsetup.sh
+          lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
+          mka bacon -j$(nproc --all)
+        '
 
     # 5. رفع ملف الروم الناتج
     - name: Upload ROM Artifact
