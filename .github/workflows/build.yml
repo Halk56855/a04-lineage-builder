@@ -1,4 +1,4 @@
-name: Android 16 Cloud Build
+name: GitHub Extreme Free Space Build
 
 on:
   workflow_dispatch:
@@ -8,33 +8,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Free Disk Space
+      - name: Extreme Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf /usr/lib/jvm
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/newsyslog
+          sudo rm -rf /var/lib/snapd
+          sudo rm -rf /opt/hostedtoolcache
+          docker image prune -a -f
           sudo apt-get clean
-          echo "=== Disk space after cleanup ==="
+          echo "=== المساحة المتاحة بعد التنظيف الشديد ==="
           df -h
 
-      - name: Install Dependencies
+      - name: Install Build Dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-      - name: Setup Repo Tool & Git
+      - name: Setup Repo & Git
         run: |
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
-
           git config --global user.email "cloud-build@infinity.org"
           git config --global user.name "CloudBuilder"
 
-      - name: Initialize & Sync Source (Shallow)
+      - name: Initialize & Sync Source
         run: |
           mkdir -p android
           cd android
@@ -49,7 +54,7 @@ jobs:
           git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
           git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-      - name: Start Building ROM
+      - name: Start Building
         run: |
           cd android
           source build/envsetup.sh
