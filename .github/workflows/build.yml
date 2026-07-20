@@ -10,22 +10,25 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
+    # 1. تنظيف عميق وشامل لقرص الحاوية وتوفير أقصى مساحة ممكنة (أكثر من 80GB)
+    - name: Maximize Disk Space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/local/share/boost
+        sudo docker image prune --all --force
+        sudo apt-get clean
+        df -h
+
+    # 2. تثبيت الحزم والأدوات اللازمة للبناء
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-    - name: Maximize Build Disk Space
-      uses: easimon/maximize-build-space@master
-      with:
-        root-reserve-mb: 2048
-        swap-size-mb: 1024
-        remove-dotnet: 'true'
-        remove-android: 'true'
-        remove-haskell: 'true'
-        remove-codeql: 'true'
-        remove-docker-images: 'true'
-
+    # 3. المزامنة ثم تفريغ المساحة والبناء
     - name: Setup Repo Tool & Build Infinity-X
       run: |
         mkdir -p ~/bin
@@ -39,32 +42,36 @@ jobs:
         
         mkdir -p android && cd android
         
-        # تهيئة الشجرة الأصلية
-        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --partial-clone --clone-filter=blob:none
+        # أ) تهيئة السورس بأسلوب شجري سطح مع تصفية الكائنات الثقيلة
+        repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --filter=blob:none
         
-        # المزامنة الذكية تلافياً لامتلاء المساحة
-        repo sync -c -j2 --force-sync --no-clone-bundle --no-tags --current-branch
+        # ب) مزامنة السورس بـ 4 خيوط اتصال لسرعة الإنجاز
+        repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch
 
-        # جلب أشجار هاتف Samsung A04 والـ Vendor والـ Kernel
+        # ج) 🔥 الخدعة الحاسمة: حذف مجلد .repo لتحرير 40+ جيجابايت فوراً
+        echo "=== Freeing space by removing .repo folder ==="
+        rm -rf .repo
+        df -h
+
+        # د) جلب أشجار هاتف Samsung A04 والـ Vendor والـ Kernel
         git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
         git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
         git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-        # تأكيد بيئة الشجرة
+        # هـ) إعداد بيئة أندرويد وتأكيد وجود الملفات
         touch Makefile
         export ANDROID_BUILD_TOP=$(pwd)
         export TOP=$(pwd)
         
-        # تفعيل البيئة الأصلية من السورس
         chmod +x build/envsetup.sh
         source build/envsetup.sh
         
-        # اختيار هدف البناء وبدء التجميع
+        # و) اختيار الهدف وتشغيل تجميع الروم
         lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
 
         mka bacon -j$(nproc --all)
 
-    # 🌟 الخطوة الجديدة: رفع ملف الروم الناتج تلقائياً لصفحة جيت هاب
+    # 4. رفع ملف الروم الناتج إلى صفحة جيت هاب
     - name: Upload ROM Artifact
       uses: actions/upload-artifact@v4
       with:
