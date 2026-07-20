@@ -14,6 +14,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
           sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/lib/jvm
           sudo apt-get clean
           echo "=== Disk space after cleanup ==="
           df -h
@@ -33,7 +34,7 @@ jobs:
           git config --global user.email "cloud-build@infinity.org"
           git config --global user.name "CloudBuilder"
 
-      - name: Initialize & Sync Source
+      - name: Initialize & Sync Source (Shallow)
         run: |
           mkdir -p android
           cd android
