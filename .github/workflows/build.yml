@@ -7,14 +7,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Maximize Build Space
-        uses: easimon/maximize-build-space@v5
-        with:
-          root-reserve-mb: 20480
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
+      - name: Free Disk Space (Full Clean)
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /var/lib/docker
+          sudo apt-get clean
+          df -h
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -35,20 +38,23 @@ jobs:
         run: |
           git config --global user.email "cloud-build@infinity.org"
           git config --global user.name "CloudBuilder"
+          
+          # إنشاء مجلد العمل الأساسي
+          mkdir -p android && cd android
 
-          # الانتقال للمعدل الموسع مع الحفاظ على صلاحيات المستخدم
-          sudo mkdir -p /mnt/build/android
-          sudo chown -R runner:runner /mnt/build
-          cd /mnt/build/android
-
+          # تنزيل السورس بكفاءة مساحة عالية
           repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch --retry-fetches=5
+          
+          # حذف مجلد .repo فوراً لتوفير ما يزيد عن 40-50 جيجابايت
           rm -rf .repo
 
+          # جلب شجرة الجهاز والـ Vendor والـ Kernel
           git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
           git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
           git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
+          # بدء البناء
           source build/envsetup.sh
           lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
           m bacon -j$(nproc --all)
@@ -57,4 +63,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LineageOS-A04-Build
-          path: /mnt/build/android/out/target/product/a04/*.zip
+          path: android/out/target/product/a04/*.zip
