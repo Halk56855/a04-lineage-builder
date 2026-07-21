@@ -9,12 +9,13 @@ jobs:
     steps:
       - name: Free Disk Space & Setup Swap
         run: |
+          # 1. تنظيف أدوات النظام غير الضرورية لتوفير المساحة
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost /usr/share/swift /var/lib/docker
           sudo apt-get clean
           
+          # 2. إعادة إعداد الـ Swap بشكل آمن
           sudo swapoff -a || true
           sudo rm -f /swapfile
-          
           sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
@@ -45,21 +46,32 @@ jobs:
           
           mkdir -p android && cd android
 
-          # تهيئة السورس
+          # 1. تهيئة السورس
           repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify
-          
-          # مزامنة سريعة وآمنة
+
+          # 2. استبعاد المكونات الضخمة غير المخصصة لجهازك لتوفير المساحة
+          mkdir -p .repo/local_manifests
+          cat <<EOF > .repo/local_manifests/remove_projects.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remove-project name="platform/prebuilts/gcc/darwin-x86/arm/arm-linux-androideabi-4.9" />
+            <remove-project name="platform/prebuilts/gcc/darwin-x86/x86/x86_64-linux-android-4.9" />
+            <remove-project name="platform/prebuilts/cmdline-tools" />
+          </manifest>
+          EOF
+
+          # 3. إجراء المزامنة
           repo sync -c -j$(nproc --all) --force-sync --force-checkout --no-clone-bundle --no-tags --current-branch --retry-fetches=10
-          
-          # حذف مجلد .repo لتوفير المساحة للبناء
+
+          # 4. حذف مجلد .repo فوراً لتوفير مساحة كافية لعملية التجميع (out folder)
           rm -rf .repo
 
-          # جلب شجرة الجهاز والـ Vendor والـ Kernel
+          # 5. جلب شجرة الجهاز والـ Vendor والـ Kernel
           git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
           git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
           git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
 
-          # بدء التجميع
+          # 6. بدء التجميع
           source build/envsetup.sh
           lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
           m bacon -j$(nproc --all)
