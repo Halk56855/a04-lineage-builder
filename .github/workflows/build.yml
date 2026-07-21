@@ -1,4 +1,4 @@
-name: GitHub Extreme Free Space Build
+name: Build Android ROM
 
 on:
   workflow_dispatch:
@@ -6,57 +6,48 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Extreme Free Disk Space
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf /usr/lib/jvm
-          sudo rm -rf /usr/local/share/powershell
-          sudo rm -rf /usr/local/share/chromium
-          sudo rm -rf /usr/local/newsyslog
-          sudo rm -rf /var/lib/snapd
-          sudo rm -rf /opt/hostedtoolcache
-          docker image prune -a -f
+          sudo rm -rf "/usr/local/share/boost"
           sudo apt-get clean
-          echo "=== المساحة المتاحة بعد التنظيف الشديد ==="
           df -h
 
-      - name: Install Build Dependencies
+      - name: Setup Build Environment
         run: |
           sudo apt-get update -y
           sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev openjdk-21-jdk python3 python-is-python3
 
-      - name: Setup Repo & Git
+      - name: Install Repo Tool
         run: |
           mkdir -p ~/bin
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
           chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Sync Source & Build
+        run: |
           git config --global user.email "cloud-build@infinity.org"
           git config --global user.name "CloudBuilder"
-
-      - name: Initialize & Sync Source
-        run: |
-          mkdir -p android
-          cd android
+          mkdir -p android && cd android
           repo init -u https://github.com/ProjectInfinity-X/manifest.git -b 16 --depth=1 --no-repo-verify --partial-clone --clone-filter=blob:none
-          repo sync -c -j4 --force-sync --no-clone-bundle --no-tags --current-branch --retry-fetches=5
-
-      - name: Clone Device Trees
-        run: |
-          cd android
-          rm -rf device/samsung/a04 vendor/samsung/a04 kernel/samsung/a04
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --current-branch --retry-fetches=5
+          rm -rf .repo
           git clone https://github.com/DaniHasReal/android_device_samsung_a04.git -b lineage_22 device/samsung/a04 --depth=1
           git clone https://github.com/DaniHasReal/a04_vendor.git -b main vendor/samsung/a04 --depth=1
           git clone https://github.com/DaniTheSillyFem/kernel_samsung_a04.git -b linux-4.19.y kernel/samsung/a04 --depth=1
-
-      - name: Start Building
-        run: |
-          cd android
           source build/envsetup.sh
           lunch infinity_a04-ap2a-userdebug || lunch infinity_a04-userdebug
-          mka bacon -j$(nproc --all)
+          m bacon -j$(nproc --all)
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: LineageOS-A04-Build
+          path: android/out/target/product/a04/*.zip
