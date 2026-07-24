@@ -13,15 +13,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # خطوة تفريغ أقصى مساحة ممكنة على القرص
       - name: Maximize Build Space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo apt-get clean
-          df -h
+        uses: easimon/maximize-build-space@v5
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
 
       - name: Set up Build Environment
         run: |
@@ -51,10 +53,10 @@ jobs:
           cd android
           git clone https://github.com/juanes10201/android_device_samsung_a04.git -b main device/samsung/a04
 
-      - name: Sync Repositories
+      - name: Sync Repositories (Lightweight)
         run: |
           cd android
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --depth=1
 
       - name: Build ROM
         run: |
