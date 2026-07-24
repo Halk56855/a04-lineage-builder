@@ -1,4 +1,4 @@
-name: Build AxionOS Android 16 for Samsung A04
+name: Build AxionOS Android 16 GSI
 
 on:
   workflow_dispatch:
@@ -13,10 +13,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 1. تنظيف أقصى مساحة ممكنة من السيرفر
       - name: Maximize Build Space
         uses: easimon/maximize-build-space@v5
         with:
-          root-reserve-mb: 2048
+          root-reserve-mb: 1024
           swap-size-mb: 1
           remove-dotnet: 'true'
           remove-android: 'true'
@@ -24,6 +25,7 @@ jobs:
           remove-codeql: 'true'
           remove-docker-images: 'true'
 
+      # 2. تثبيت الحزم المتوافقة مع أندرويد 16
       - name: Set up Build Environment
         run: |
           sudo apt-get update
@@ -32,7 +34,8 @@ jobs:
             git git-lfs gnupg gperf lib32ncurses5-dev lib32z1-dev libgl1-mesa-dev \
             libxml2-utils xsltproc zip zlib1g-dev python3 python3-pip
 
-      - name: Configure Git & Install Repo Tool
+      # 3. إعداد أداة Repo و Git
+      - name: Configure Git & Install Repo
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -41,31 +44,37 @@ jobs:
           chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
 
+      # 4. تهيئة سورس AxionOS للـ GSI فقط (توفير المساحة)
       - name: Initialize AxionOS Source
         run: |
           mkdir -p android
           cd android
           repo init -u https://github.com/AxionAOSP/android.git -b lineage-23.2 --git-lfs --depth=1
 
-      - name: Clone Device Tree
-        run: |
-          cd android
-          git clone https://github.com/juanes10201/android_device_samsung_a04.git -b main device/samsung/a04
-
-      - name: Sync Repositories (Lightweight)
+      # 5. المزامنة الخفيفة
+      - name: Sync Repositories
         run: |
           cd android
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
-      - name: Build ROM
+      # 6. بدء بناء صورة الـ GSI لمعمارية ARM64
+      - name: Build GSI Image
         run: |
           cd android
           source build/envsetup.sh
-          lunch axion_a04-userdebug || lunch lineage_a04-userdebug
-          mka bacon -j$(nproc --all)
+          # اختيار تكوين GSI القياسي لمعمارية ARM64
+          lunch axion_arm64_bgN-userdebug || lunch treble_arm64_bgN-userdebug
+          make systemimage -j$(nproc --all)
 
-      - name: Upload ROM Artifact
+      # 7. ضغط الصورة المخرجة لسهولة التحميل
+      - name: Compress System Image
+        run: |
+          cd android/out/target/product/generic_arm64
+          xz -z -9 system.img
+
+      # 8. رفع الملف النهائي
+      - name: Upload GSI Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AxionOS-Samsung-A04-Android16
-          path: android/out/target/product/a04/*.zip
+          name: AxionOS-Android16-ARM64-GSI
+          path: android/out/target/product/generic_arm64/system.img.xz
