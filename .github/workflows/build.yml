@@ -49,7 +49,7 @@ jobs:
       - name: Clone Device Tree
         run: |
           cd android
-          git clone https://github.com/juanes10201/android_device_samsung_a04.git -b lineage-20 device/samsung/a04
+          git clone https://github.com/juanes10201/android_device_samsung_a04.git -b main device/samsung/a04
 
       - name: Sync Repositories
         run: |
