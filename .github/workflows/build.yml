@@ -1,4 +1,4 @@
-name: Build AxionOS Android 16 GSI
+name: Build AxionOS Android 16 for Samsung A04
 
 on:
   workflow_dispatch:
@@ -13,19 +13,30 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. تنظيف أقصى مساحة ممكنة من السيرفر
-      - name: Maximize Build Space
-        uses: easimon/maximize-build-space@v5
-        with:
-          root-reserve-mb: 1024
-          swap-size-mb: 1
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
+      # 1. تفريغ أقصى مساحة تخزين ممكنة داخل خادم GitHub (حذف الحزم الكبيرة)
+      - name: Free Maximum Disk Space
+        run: |
+          echo "=== المساحة قبل التنظيف ==="
+          df -h
+          
+          # حذف الحزم والبرامج الافتراضية الثقيلة
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/graalvm
+          sudo rm -rf /usr/local/share/powershell
+          
+          # تنظيف حزم Apt وحاويات Docker
+          sudo apt-get clean
+          docker image prune -a -f -a
+          
+          echo "=== المساحة المتاحة بعد التنظيف ==="
+          df -h
 
-      # 2. تثبيت الحزم المتوافقة مع أندرويد 16
+      # 2. تثبيت حزم وتدبيرات البناء الأساسية
       - name: Set up Build Environment
         run: |
           sudo apt-get update
@@ -35,7 +46,7 @@ jobs:
             libxml2-utils xsltproc zip zlib1g-dev python3 python3-pip
 
       # 3. إعداد أداة Repo و Git
-      - name: Configure Git & Install Repo
+      - name: Configure Git & Install Repo Tool
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -44,37 +55,36 @@ jobs:
           chmod a+x ~/bin/repo
           echo "$HOME/bin" >> $GITHUB_PATH
 
-      # 4. تهيئة سورس AxionOS للـ GSI فقط (توفير المساحة)
+      # 4. تهيئة سورس AxionOS
       - name: Initialize AxionOS Source
         run: |
           mkdir -p android
           cd android
           repo init -u https://github.com/AxionAOSP/android.git -b lineage-23.2 --git-lfs --depth=1
 
-      # 5. المزامنة الخفيفة
+      # 5. تنزيل شجرة جهاز Samsung A04
+      - name: Clone Device Tree
+        run: |
+          cd android
+          git clone https://github.com/juanes10201/android_device_samsung_a04.git -b main device/samsung/a04
+
+      # 6. مزامنة السورس (تنزيل الملفات)
       - name: Sync Repositories
         run: |
           cd android
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 
-      # 6. بدء بناء صورة الـ GSI لمعمارية ARM64
-      - name: Build GSI Image
+      # 7. بدء عملية التجميع (Compiling)
+      - name: Build ROM
         run: |
           cd android
           source build/envsetup.sh
-          # اختيار تكوين GSI القياسي لمعمارية ARM64
-          lunch axion_arm64_bgN-userdebug || lunch treble_arm64_bgN-userdebug
-          make systemimage -j$(nproc --all)
+          lunch axion_a04-userdebug || lunch lineage_a04-userdebug
+          mka bacon -j$(nproc --all)
 
-      # 7. ضغط الصورة المخرجة لسهولة التحميل
-      - name: Compress System Image
-        run: |
-          cd android/out/target/product/generic_arm64
-          xz -z -9 system.img
-
-      # 8. رفع الملف النهائي
-      - name: Upload GSI Artifact
+      # 8. رفع ملف ZIP النهائي عند النجاح
+      - name: Upload ROM Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AxionOS-Android16-ARM64-GSI
-          path: android/out/target/product/generic_arm64/system.img.xz
+          name: AxionOS-Samsung-A04-Android16
+          path: android/out/target/product/a04/*.zip
